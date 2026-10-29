@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1e3a8a" />
+  <title>GeoAttend Pro | Pan-India Attendance System</title>
+  <!-- Tailwind CSS for Modern UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f1f5f9; }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+    video { transform: scaleX(-1); } /* Mirror front camera */
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 pb-12">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="bg-blue-500/20 p-2 rounded-xl border border-blue-400/30">
+          <i data-lucide="map-pin-check-inside" class="w-6 h-6 text-blue-300"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-wide">GeoAttend Pro</h1>
+          <p class="text-xs text-blue-200" id="header-subtitle">UP & Pan-India Remote Workforce</p>
+        </div>
+      </div>
+      <div id="user-Session-Bar" class="hidden flex items-center space-x-3">
+        <span id="logged-user-badge" class="text-xs bg-white/10 px-3 py-1.5 rounded-full font-medium border border-white/15"></span>
+        <button onclick="logout()" class="bg-red-500/90 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-6xl mx-auto px-4 mt-6">
+
+    <!-- CONNECTION ALERT BANNER (Shows if Supabase Keys aren't pasted yet) -->
+    <div id="demo-mode-banner" class="hidden mb-5 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm">
+      <div class="flex items-start gap-3">
+        <i data-lucide="info" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+        <div class="text-xs text-amber-900 space-y-1">
+          <p class="font-bold text-sm">Running in Offline Demo Mode (Local Browser Storage)</p>
+          <p>You can test all features right now! To connect your live Supabase Cloud Database, paste your <b>SUPABASE_URL</b> and <b>SUPABASE_ANON_KEY</b> at line 248 of <code>index.html</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 1: LOGIN SCREEN                     -->
+    <!-- ========================================== -->
+    <section id="login-screen" class="max-w-md mx-auto mt-8">
+      <div class="glass-card rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-8">
+        <div class="text-center mb-6">
+          <div class="w-14 h-14 bg-blue-600/10 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="shield-check" class="w-8 h-8"></i>
+          </div>
+          <h2 class="text-2xl font-extrabold text-slate-900">Sign In</h2>
+          <p class="text-xs text-slate-500 mt-1">Enter your Employee / Admin ID & PIN</p>
+        </div>
+
+        <form onsubmit="handleLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">User ID / Employee Code</label>
+            <input type="text" id="login-emp-code" required placeholder="e.g. ADMIN01, COORD01, EMP101" 
+              class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-medium uppercase" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Secret PIN</label>
+            <input type="password" id="login-pin" required placeholder="Default: 1234" value="1234"
+              class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-medium" />
+          </div>
+          <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+            <span>Access Portal</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </form>
+
+        <!-- ONE-CLICK QUICK DEMO BUTTONS FOR EASY TESTING -->
+        <div class="mt-6 pt-5 border-t border-slate-200">
+          <p class="text-xs font-semibold text-slate-400 uppercase text-center mb-3">Quick 1-Click Test Logins (PIN: 1234)</p>
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="quickLogin('ADMIN01')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-semibold py-2 px-2 rounded-lg border border-indigo-200 transition">
+              👑 Admin<br><span class="text-[10px] font-normal">ADMIN01</span>
+            </button>
+            <button onclick="quickLogin('COORD01')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold py-2 px-2 rounded-lg border border-emerald-200 transition">
+              📋 Supervisor<br><span class="text-[10px] font-normal">COORD01</span>
+            </button>
+            <button onclick="quickLogin('EMP101')" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold py-2 px-2 rounded-lg border border-blue-200 transition">
+              📸 Employee<br><span class="text-[10px] font-normal">EMP101</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 2: EMPLOYEE PORTAL (CAMERA + GPS)   -->
+    <!-- ========================================== -->
+    <section id="employee-screen" class="hidden max-w-lg mx-auto space-y-5">
+      <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">Assigned Area</span>
+            <h3 id="emp-zone-title" class="text-xl font-bold text-slate-900 mt-1">Bareilly</h3>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-slate-400">Today's Date</p>
+            <p id="emp-today-date" class="text-sm font-bold text-slate-700"></p>
+          </div>
+        </div>
+
+        <!-- GPS Live Status Box -->
+        <div id="gps-status-box" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-100 text-blue-700 rounded-lg">
+              <i data-lucide="locate-fixed" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-700" id="gps-coord-text">Fetching Live GPS Location...</p>
+              <p class="text-[11px] text-slate-500" id="gps-distance-text">Checking distance from assigned zone</p>
+            </div>
+          </div>
+          <button onclick="fetchLiveGPS()" class="text-xs bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg font-semibold hover:bg-slate-100">
+            Refresh GPS
+          </button>
+        </div>
+
+        <!-- Live Camera Box -->
+        <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border-2 border-slate-200 shadow-inner">
+          <video id="camera-stream" autoplay playsinline class="w-full h-full object-cover hidden"></video>
+          <canvas id="camera-canvas" class="hidden"></canvas>
+          <img id="captured-photo" class="w-full h-full object-cover hidden" alt="Captured selfie" />
+          
+          <div id="camera-placeholder" class="text-center p-6 text-slate-400">
+            <i data-lucide="camera" class="w-12 h-12 mx-auto mb-2 opacity-60"></i>
+            <p class="text-xs">Live Front Camera Required for Geo-Tagged Attendance</p>
+            <button onclick="startCamera()" class="mt-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow">
+              Turn On Front Camera
+            </button>
+          </div>
+
+          <!-- Live Geo-Tag Overlay Stamp on Camera -->
+          <div id="camera-overlay-stamp" class="hidden absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-sm text-white p-2.5 rounded-xl text-[11px] font-mono leading-snug">
+            <div id="stamp-name" class="font-bold text-amber-300"></div>
+            <div id="stamp-coords"></div>
+            <div id="stamp-time"></div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-5 space-y-2.5">
+          <button id="btn-submit-attendance" onclick="captureAndMarkAttendance()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+            <span>Click Photo & Mark Attendance</span>
+          </button>
+        </div>
+
+        <div id="emp-result-msg" class="hidden mt-4 p-3.5 rounded-xl text-xs font-semibold text-center"></div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 3: COORDINATOR & ADMIN DASHBOARD    -->
+    <!-- ========================================== -->
+    <section id="dashboard-screen" class="hidden space-y-6">
+
+      <!-- TOP BAR: ROLE TITLE & AREA SUB-DIVISION FILTER -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span id="dash-role-tag" class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700">Master Admin View</span>
+          <h2 class="text-xl font-extrabold text-slate-900 mt-1" id="dash-main-heading">Pan-India Attendance Overview</h2>
+        </div>
+
+        <!-- Area Filter (Visible to Admin; locked to assigned area for Coordinator) -->
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="text-xs font-bold text-slate-500 uppercase">Area Filter:</label>
+          <select id="area-filter-select" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600">
+            <option value="ALL">All Areas (Pan-India Combined)</option>
+          </select>
+          <button onclick="loadAllData()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2.5 rounded-xl border border-blue-200 flex items-center gap-1">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Sync
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 SUMMARY CARDS: TOTAL, PRESENT, ABSENT, LEAVE -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-400">Total Active Staff</p>
+            <p id="stat-total" class="text-3xl font-black text-slate-800 mt-1">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center">
+            <i data-lucide="users" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase text-emerald-600">Present Today</p>
+            <p id="stat-present" class="text-3xl font-black text-emerald-600 mt-1">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="user-check" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-rose-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase text-rose-600">Absent / Not Marked</p>
+            <p id="stat-absent" class="text-3xl font-black text-rose-600 mt-1">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i data-lucide="user-x" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-amber-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase text-amber-600">On Approved Leave</p>
+            <p id="stat-leave" class="text-3xl font-black text-amber-600 mt-1">0</p>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i data-lucide="calendar-off" class="w-6 h-6"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- AREA-WISE BREAKDOWN CARDS (Shown to Admin so they see Bareilly, Moradabad, UP, Pan-India side by side) -->
+      <div id="admin-area-subdivision-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-700">Sub-Divided Area Breakdown (Live Today)</h3>
+            <p class="text-xs text-slate-400">Click any area card to filter the attendance sheet below</p>
+          </div>
+        </div>
+        <div id="area-breakdown-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5"></div>
+      </div>
+
+      <!-- TABS FOR ATTENDANCE LOGS vs STAFF MAINTENANCE vs ZONE SETTINGS -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="border-b border-slate-200 bg-slate-50 px-4 pt-3 flex flex-wrap gap-2">
+          <button onclick="switchDashTab('tab-attendance')" id="btn-tab-attendance" class="px-4 py-2.5 text-xs font-bold rounded-t-xl bg-white text-blue-700 border-t border-x border-slate-200">
+            📋 Today's Attendance & Leave Control
+          </button>
+          <button onclick="switchDashTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2.5 text-xs font-bold rounded-t-xl text-slate-600 hover:text-slate-900">
+            👥 Add / Remove / Outgoing Employees
+          </button>
+          <button onclick="switchDashTab('tab-zones')" id="btn-tab-zones" class="hidden px-4 py-2.5 text-xs font-bold rounded-t-xl text-slate-600 hover:text-slate-900">
+            📍 Manage Geo-Fence Zones (Admin Only)
+          </button>
+        </div>
+
+        <!-- TAB 1: LIVE ATTENDANCE TABLE -->
+        <div id="tab-attendance" class="p-4 sm:p-5 overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-400">
+                <th class="py-3 px-3">Employee</th>
+                <th class="py-3 px-3">Area / Zone</th>
+                <th class="py-3 px-3">Today's Status</th>
+                <th class="py-3 px-3">Time & GPS Distance</th>
+                <th class="py-3 px-3">Geo-Selfie</th>
+                <th class="py-3 px-3 text-right">Coordinator / Admin Action</th>
+              </tr>
+            </thead>
+            <tbody id="attendance-table-body" class="divide-y divide-slate-100 text-xs"></tbody>
+          </table>
+        </div>
+
+        <!-- TAB 2: ADD / REMOVE / MAINTAIN INCOMING & OUTGOING EMPLOYEES -->
+        <div id="tab-employees" class="hidden p-4 sm:p-5 space-y-6">
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h4 class="text-xs font-extrabold uppercase text-slate-700 mb-3">➕ Add Incoming Employee / Coordinator</h4>
+            <form onsubmit="handleAddUser(event)" class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+              <input type="text" id="new-emp-code" required placeholder="Emp ID (e.g. EMP105)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold uppercase" />
+              <input type="text" id="new-emp-name" required placeholder="Full Name" class="px-3 py-2 rounded-lg border border-slate-300 text-xs" />
+              <select id="new-emp-zone" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold"></select>
+              <select id="new-emp-role" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold">
+                <option value="employee">Role: Employee</option>
+                <option value="coordinator">Role: Coordinator</option>
+              </select>
+              <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow">
+                + Save User
+              </button>
+            </form>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-400">
+                  <th class="py-2.5 px-3">Code</th>
+                  <th class="py-2.5 px-3">Full Name</th>
+                  <th class="py-2.5 px-3">Role</th>
+                  <th class="py-2.5 px-3">Assigned Zone</th>
+                  <th class="py-2.5 px-3">Employment Status</th>
+                  <th class="py-2.5 px-3 text-right">Maintain Status / Remove</th>
+                </tr>
+              </thead>
+              <tbody id="employee-list-body" class="divide-y divide-slate-100 text-xs"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 3: MANAGE GEO-FENCE AREAS (ADMIN ONLY) -->
+        <div id="tab-zones" class="hidden p-4 sm:p-5 space-y-6">
+          <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-200">
+            <h4 class="text-xs font-extrabold uppercase text-indigo-900 mb-2">📍 Add New Area / Office Geo-Fence (UP or Pan-India)</h4>
+            <form onsubmit="handleAddZone(event)" class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+              <input type="text" id="new-zone-name" required placeholder="Area Name (e.g. Noida)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs" />
+              <input type="number" step="any" id="new-zone-lat" required placeholder="Latitude (e.g. 28.5355)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs" />
+              <input type="number" step="any" id="new-zone-lng" required placeholder="Longitude (e.g. 77.3910)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs" />
+              <input type="number" id="new-zone-radius" required placeholder="Allowed Meters (1500)" value="1500" class="px-3 py-2 rounded-lg border border-slate-300 text-xs" />
+              <button type="submit" class="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow">
+                + Add Area
+              </button>
+            </form>
+          </div>
+          <div id="zones-list-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- PHOTO PREVIEW MODAL -->
+  <div id="photo-modal" onclick="closePhotoModal()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+      <img id="modal-img" class="w-full h-72 object-cover" alt="Employee Geo Selfie" />
+      <div class="p-4 flex items-center justify-between">
+        <p id="modal-caption" class="text-xs font-bold text-slate-700"></p>
+        <button onclick="closePhotoModal()" class="bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- APPLICATION JAVASCRIPT & ALGORITHM         -->
+  <!-- ========================================== -->
+  <script>
+    // ============================================================================
+    // STEP 1: PASTE YOUR SUPABASE KEYS HERE (From Supabase -> Settings -> API)
+    // ============================================================================
+    const SUPABASE_URL = "https://whsfpsrevtichsejdggw.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indoc2Zwc3JldnRpY2hzZWpkZ2d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNTI5OTksImV4cCI6MjEwODgyODk5OX0.iTjdf_0YFTdX38SZNoWBheANyx0sde1Z2xYJQayGGes";
+
+    const isSupabaseConfigured = SUPABASE_URL.startsWith("https://") && SUPABASE_ANON_KEY.length > 20;
+    const supabaseClient = isSupabaseConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    // Default Fallback Data so the app works 100% even before you paste keys
+    let zonesData = [
+      { zone_name: 'Bareilly', center_lat: 28.3670, center_lng: 79.4304, radius_meters: 1500, is_pan_india: false },
+      { zone_name: 'Moradabad', center_lat: 28.8386, center_lng: 78.7733, radius_meters: 1500, is_pan_india: false },
+      { zone_name: 'Lucknow (UP)', center_lat: 26.8467, center_lng: 80.9462, radius_meters: 2000, is_pan_india: false },
+      { zone_name: 'Pan-India (Remote)', center_lat: 20.5937, center_lng: 78.9629, radius_meters: 5000000, is_pan_india: true }
+    ];
+
+    let usersData = [
+      { emp_code: 'ADMIN01', pin_code: '1234', full_name: 'Master Admin', role: 'admin', zone_name: 'Pan-India (Remote)', status: 'active' },
+      { emp_code: 'COORD01', pin_code: '1234', full_name: 'Bareilly Supervisor', role: 'coordinator', zone_name: 'Bareilly', status: 'active' },
+      { emp_code: 'COORD02', pin_code: '1234', full_name: 'Moradabad Supervisor', role: 'coordinator', zone_name: 'Moradabad', status: 'active' },
+      { emp_code: 'EMP101', pin_code: '1234', full_name: 'Rahul Sharma', role: 'employee', zone_name: 'Bareilly', status: 'active' },
+      { emp_code: 'EMP102', pin_code: '1234', full_name: 'Amit Verma', role: 'employee', zone_name: 'Moradabad', status: 'active' },
+      { emp_code: 'EMP103', pin_code: '1234', full_name: 'Priya Singh', role: 'employee', zone_name: 'Pan-India (Remote)', status: 'active' }
+    ];
+
+    let attendanceData = [];
+    let currentUser = null;
+    let currentGPS = { lat: null, lng: null, distanceMeters: null, insideZone: false };
+    let cameraStream = null;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      if (!isSupabaseConfigured) {
+        document.getElementById('demo-mode-banner').classList.remove('hidden');
+        const savedUsers = localStorage.getItem('geo_users');
+        const savedAtt = localStorage.getItem('geo_att');
+        const savedZones = localStorage.getItem('geo_zones');
+        if (savedUsers) usersData = JSON.parse(savedUsers);
+        if (savedAtt) attendanceData = JSON.parse(savedAtt);
+        if (savedZones) zonesData = JSON.parse(savedZones);
+      } else {
+        await loadAllData();
+      }
+    });
+
+    async function loadAllData() {
+      if (!isSupabaseConfigured) return;
+      const { data: z } = await supabaseClient.from('zones').select('*');
+      const { data: u } = await supabaseClient.from('app_users').select('*');
+      const { data: a } = await supabaseClient.from('attendance_logs').select('*').eq('att_date', todayStr);
+      if (z && z.length) zonesData = z;
+      if (u && u.length) usersData = u;
+      if (a) attendanceData = a;
+      if (currentUser && currentUser.role !== 'employee') renderDashboard();
+    }
+
+    function saveLocalFallback() {
+      if (!isSupabaseConfigured) {
+        localStorage.setItem('geo_users', JSON.stringify(usersData));
+        localStorage.setItem('geo_att', JSON.stringify(attendanceData));
+        localStorage.setItem('geo_zones', JSON.stringify(zonesData));
+      }
+    }
+
+    // HAVERSINE MATHEMATICAL FORMULA (Calculates exact distance in meters between 2 GPS coordinates)
+    function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // Earth radius in meters
+      const toRad = (deg) => (deg * Math.PI) / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
+    // QUICK LOGIN & AUTHENTICATION
+    function quickLogin(code) {
+      document.getElementById('login-emp-code').value = code;
+      document.getElementById('login-pin').value = '1234';
+      handleLogin(new Event('submit'));
+    }
+
+    async function handleLogin(e) {
+      if (e.preventDefault) e.preventDefault();
+      await loadAllData();
+      const code = document.getElementById('login-emp-code').value.trim().toUpperCase();
+      const pin = document.getElementById('login-pin').value.trim();
+
+      const user = usersData.find(u => u.emp_code.toUpperCase() === code && u.pin_code === pin);
+      if (!user) {
+        alert('Invalid Employee Code or PIN! Try ADMIN01, COORD01, or EMP101 with PIN 1234.');
+        return;
+      }
+      if (user.status !== 'active') {
+        alert('Access Denied: Your employee profile is marked as Outgoing/Inactive by the Coordinator.');
+        return;
+      }
+
+      currentUser = user;
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('user-Session-Bar').classList.remove('hidden');
+      document.getElementById('logged-user-badge').textContent = `${user.full_name} (${user.role.toUpperCase()})`;
+
+      if (user.role === 'employee') {
+        openEmployeePortal();
+      } else {
+        openDashboardPortal();
+      }
+    }
+
+    function logout() {
+      stopCamera();
+      currentUser = null;
+      document.getElementById('employee-screen').classList.add('hidden');
+      document.getElementById('dashboard-screen').classList.add('hidden');
+      document.getElementById('user-Session-Bar').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+    }
+
+    // ============================================================================
+    // EMPLOYEE CAMERA & AUTOMATIC GEO-TAGGING LOGIC
+    // ============================================================================
+    function openEmployeePortal() {
+      document.getElementById('employee-screen').classList.remove('hidden');
+      document.getElementById('emp-zone-title').textContent = currentUser.zone_name;
+      document.getElementById('emp-today-date').textContent = todayStr;
+      fetchLiveGPS();
+      startCamera();
+    }
+
+    function fetchLiveGPS() {
+      const coordText = document.getElementById('gps-coord-text');
+      const distText = document.getElementById('gps-distance-text');
+      coordText.textContent = "Acquiring Satellite GPS...";
+
+      if (!navigator.geolocation) {
+        coordText.textContent = "GPS not supported on this browser";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const assignedZone = zonesData.find(z => z.zone_name === currentUser.zone_name) || zonesData[0];
+          const dist = calculateDistanceMeters(lat, lng, assignedZone.center_lat, assignedZone.center_lng);
+          const inside = assignedZone.is_pan_india || dist <= assignedZone.radius_meters;
+
+          currentGPS = { lat, lng, distanceMeters: dist, insideZone: inside };
+          coordText.textContent = `GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          
+          if (inside) {
+            distText.innerHTML = `<span class="text-emerald-600 font-bold">✔ Inside Desired Zone (${dist}m from center) — Will Mark PRESENT</span>`;
+          } else {
+            distText.innerHTML = `<span class="text-rose-600 font-bold">✖ Outside Zone (${dist}m away; limit ${assignedZone.radius_meters}m) — Will Mark ABSENT</span>`;
+          }
+          updateCameraStamp();
+        },
+        () => {
+          // Fallback simulated coordinates if user denies permission on desktop PC
+          const assignedZone = zonesData.find(z => z.zone_name === currentUser.zone_name) || zonesData[0];
+          currentGPS = { lat: assignedZone.center_lat, lng: assignedZone.center_lng, distanceMeters: 45, insideZone: true };
+          coordText.textContent = `Simulated GPS (${assignedZone.zone_name}): ${currentGPS.lat.toFixed(4)}, ${currentGPS.lng.toFixed(4)}`;
+          distText.innerHTML = `<span class="text-emerald-600 font-bold">✔ Inside Zone (45m) — Ready to Mark PRESENT</span>`;
+          updateCameraStamp();
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function updateCameraStamp() {
+      const stamp = document.getElementById('camera-overlay-stamp');
+      stamp.classList.remove('hidden');
+      document.getElementById('stamp-name').textContent = `${currentUser.full_name} (${currentUser.emp_code}) - ${currentUser.zone_name}`;
+      document.getElementById('stamp-coords').textContent = `LAT: ${currentGPS.lat?.toFixed(5)} | LNG: ${currentGPS.lng?.toFixed(5)}`;
+      document.getElementById('stamp-time').textContent = `TIME: ${new Date().toLocaleString()}`;
+    }
+
+    async function startCamera() {
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        const video = document.getElementById('camera-stream');
+        video.srcObject = cameraStream;
+        video.classList.remove('hidden');
+        document.getElementById('camera-placeholder').classList.add('hidden');
+        updateCameraStamp();
+      } catch (err) {
+        console.warn("Camera access unavailable or denied; using geo-stamp card fallback.");
+      }
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+    }
+
+    async function captureAndMarkAttendance() {
+      if (!currentGPS.lat) {
+        alert("Please wait 2 seconds for GPS coordinates to lock.");
+        return;
+      }
+
+      const video = document.getElementById('camera-stream');
+      const canvas = document.getElementById('camera-canvas');
+      canvas.width = 480;
+      canvas.height = 360;
+      const ctx = canvas.getContext('2d');
+
+      if (cameraStream && !video.classList.contains('hidden')) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Burn Geo-Tag Watermark directly onto the Photograph
+      ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+      ctx.fillRect(0, canvas.height - 78, canvas.width, 78);
+      ctx.fillStyle = "#fbbf24";
+      ctx.font = "bold 14px monospace";
+      ctx.fillText(`${currentUser.full_name} (${currentUser.emp_code}) | Zone: ${currentUser.zone_name}`, 12, canvas.height - 52);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "12px monospace";
+      ctx.fillText(`GPS: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)} (${currentGPS.distanceMeters}m)`, 12, canvas.height - 32);
+      ctx.fillText(`Verified Time: ${new Date().toLocaleString()}`, 12, canvas.height - 12);
+
+      const photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+      const previewImg = document.getElementById('captured-photo');
+      previewImg.src = photoBase64;
+      previewImg.classList.remove('hidden');
+      video.classList.add('hidden');
+
+      // Automatic Decision: Present if inside desired area, Absent if outside
+      const finalStatus = currentGPS.insideZone ? 'Present' : 'Absent';
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const record = {
+        emp_code: currentUser.emp_code,
+        full_name: currentUser.full_name,
+        zone_name: currentUser.zone_name,
+        att_date: todayStr,
+        att_time: nowTime,
+        status: finalStatus,
+        lat: currentGPS.lat,
+        lng: currentGPS.lng,
+        distance_meters: currentGPS.distanceMeters,
+        photo_base64: photoBase64,
+        marked_by: 'Geo-Selfie'
+      };
+
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+      } else {
+        attendanceData = attendanceData.filter(a => !(a.emp_code === record.emp_code && a.att_date === todayStr));
+        attendanceData.push(record);
+        saveLocalFallback();
+      }
+
+      const msgBox = document.getElementById('emp-result-msg');
+      msgBox.classList.remove('hidden');
+      if (finalStatus === 'Present') {
+        msgBox.className = "mt-4 p-4 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300";
+        msgBox.textContent = `✔ Attendance Marked as PRESENT! Geo-Tagged Photo Uploaded for ${currentUser.zone_name}.`;
+      } else {
+        msgBox.className = "mt-4 p-4 rounded-xl text-xs font-bold bg-rose-100 text-rose-900 border border-rose-300";
+        msgBox.textContent = `✖ Outside Designated Area (${currentGPS.distanceMeters}m away). Automatically Marked as ABSENT.`;
+      }
+    }
+
+    // ============================================================================
+    // ADMIN & COORDINATOR DASHBOARD LOGIC
+    // ============================================================================
+    function openDashboardPortal() {
+      document.getElementById('dashboard-screen').classList.remove('hidden');
+      const areaSelect = document.getElementById('area-filter-select');
+      const newEmpZone = document.getElementById('new-emp-zone');
+
+      areaSelect.innerHTML = `<option value="ALL">All Areas (Pan-India Combined)</option>`;
+      newEmpZone.innerHTML = ``;
+      zonesData.forEach(z => {
+        areaSelect.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
+        newEmpZone.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
+      });
+
+      if (currentUser.role === 'coordinator') {
+        // Coordinator is locked to their own assigned area
+        document.getElementById('dash-role-tag').textContent = `Coordinator / Supervisor Portal`;
+        document.getElementById('dash-main-heading').textContent = `${currentUser.zone_name} Area Attendance & Staff`;
+        areaSelect.value = currentUser.zone_name;
+        areaSelect.disabled = true;
+        newEmpZone.value = currentUser.zone_name;
+        newEmpZone.disabled = true;
+        document.getElementById('admin-area-subdivision-section').classList.add('hidden');
+        document.getElementById('btn-tab-zones').classList.add('hidden');
+      } else {
+        // Admin sees all areas, sub-divided cards, and zone management
+        document.getElementById('dash-role-tag').textContent = `Master Admin Command Center`;
+        document.getElementById('dash-main-heading').textContent = `Multi-Area Pan-India Dashboard`;
+        areaSelect.disabled = false;
+        newEmpZone.disabled = false;
+        document.getElementById('admin-area-subdivision-section').classList.remove('hidden');
+        document.getElementById('btn-tab-zones').classList.remove('hidden');
+      }
+
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      const selectedArea = document.getElementById('area-filter-select').value;
+      const activeEmployees = usersData.filter(u => u.role === 'employee' && u.status === 'active');
+      const filteredEmployees = selectedArea === 'ALL'
+        ? activeEmployees
+        : activeEmployees.filter(u => u.zone_name === selectedArea);
+
+      let presentCount = 0;
+      let leaveCount = 0;
+      let absentCount = 0;
+
+      const tbody = document.getElementById('attendance-table-body');
+      tbody.innerHTML = '';
+
+      filteredEmployees.forEach(emp => {
+        const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === todayStr);
+        const status = log ? log.status : 'Absent';
+
+        if (status === 'Present') presentCount++;
+        else if (status === 'Leave') leaveCount++;
+        else absentCount++;
+
+        const badgeClass = status === 'Present'
+          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+          : status === 'Leave'
+          ? 'bg-amber-100 text-amber-800 border-amber-300'
+          : 'bg-rose-100 text-rose-800 border-rose-300';
+
+        const photoCell = log && log.photo_base64
+          ? `<button onclick="viewPhoto('${emp.emp_code}')" class="text-blue-600 hover:underline font-bold flex items-center gap-1">📸 View Geo-Photo</button>`
+          : `<span class="text-slate-400">No Photo</span>`;
+
+        const timeAndDist = log
+          ? `<span class="font-bold text-slate-700">${log.att_time}</span> <span class="text-slate-400">(${log.distance_meters || 0}m)</span>`
+          : `<span class="text-slate-400">Not Marked Yet</span>`;
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-3">
+              <div class="font-bold text-slate-900">${emp.full_name}</div>
+              <div class="text-[11px] text-slate-400">${emp.emp_code}</div>
+            </td>
+            <td class="py-3 px-3 font-semibold text-slate-700">${emp.zone_name}</td>
+            <td class="py-3 px-3">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">${status}</span>
+            </td>
+            <td class="py-3 px-3">${timeAndDist}</td>
+            <td class="py-3 px-3">${photoCell}</td>
+            <td class="py-3 px-3 text-right space-x-1">
+              <button onclick="manualOverrideStatus('${emp.emp_code}', 'Present')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded font-bold text-[11px]">Present</button>
+              <button onclick="manualOverrideStatus('${emp.emp_code}', 'Leave')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded font-bold text-[11px]">Mark Leave</button>
+              <button onclick="manualOverrideStatus('${emp.emp_code}', 'Absent')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded font-bold text-[11px]">Absent</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('stat-total').textContent = filteredEmployees.length;
+      document.getElementById('stat-present').textContent = presentCount;
+      document.getElementById('stat-absent').textContent = absentCount;
+      document.getElementById('stat-leave').textContent = leaveCount;
+
+      renderAreaBreakdownCards(activeEmployees);
+      renderEmployeeMaintenanceTable();
+      renderZonesGrid();
+    }
+
+    function renderAreaBreakdownCards(activeEmployees) {
+      const grid = document.getElementById('area-breakdown-grid');
+      grid.innerHTML = '';
+
+      zonesData.forEach(z => {
+        const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name);
+        let p = 0, l = 0, a = 0;
+        zoneEmps.forEach(emp => {
+          const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === todayStr);
+          const st = log ? log.status : 'Absent';
+          if (st === 'Present') p++;
+          else if (st === 'Leave') l++;
+          else a++;
+        });
+
+        grid.innerHTML += `
+          <div onclick="filterByAreaCard('${z.zone_name}')" class="cursor-pointer bg-slate-50 hover:bg-blue-50/60 border border-slate-200 hover:border-blue-300 rounded-xl p-3.5 transition">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-extrabold text-xs text-slate-800">${z.zone_name}</span>
+              <span class="text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">Total: ${zoneEmps.length}</span>
+            </div>
+            <div class="grid grid-cols-3 gap-1 text-center text-[11px] font-bold">
+              <div class="bg-emerald-100/70 text-emerald-800 py-1 rounded">P: ${p}</div>
+              <div class="bg-rose-100/70 text-rose-800 py-1 rounded">A: ${a}</div>
+              <div class="bg-amber-100/70 text-amber-800 py-1 rounded">L: ${l}</div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function filterByAreaCard(zoneName) {
+      const sel = document.getElementById('area-filter-select');
+      sel.value = sel.value === zoneName ? 'ALL' : zoneName;
+      renderDashboard();
+    }
+
+    async function manualOverrideStatus(empCode, newStatus) {
+      const emp = usersData.find(u => u.emp_code === empCode);
+      if (!emp) return;
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const record = {
+        emp_code: emp.emp_code,
+        full_name: emp.full_name,
+        zone_name: emp.zone_name,
+        att_date: todayStr,
+        att_time: nowTime,
+        status: newStatus,
+        distance_meters: 0,
+        marked_by: currentUser.full_name
+      };
+
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+        await loadAllData();
+      } else {
+        attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === todayStr));
+        attendanceData.push(record);
+        saveLocalFallback();
+        renderDashboard();
+      }
+    }
+
+    // COORDINATOR & ADMIN: ADD / REMOVE / OUTGOING EMPLOYEE MANAGEMENT
+    function renderEmployeeMaintenanceTable() {
+      const tbody = document.getElementById('employee-list-body');
+      tbody.innerHTML = '';
+      const visibleUsers = currentUser.role === 'coordinator'
+        ? usersData.filter(u => u.zone_name === currentUser.zone_name && u.role === 'employee')
+        : usersData;
+
+      visibleUsers.forEach(u => {
+        const statusBadge = u.status === 'active'
+          ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[11px] font-bold">Active (Incoming)</span>`
+          : `<span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[11px] font-bold">Outgoing / Inactive</span>`;
+
+        tbody.innerHTML += `
+          <tr>
+            <td class="py-2.5 px-3 font-bold">${u.emp_code}</td>
+            <td class="py-2.5 px-3">${u.full_name}</td>
+            <td class="py-2.5 px-3 uppercase text-[11px] font-bold text-blue-700">${u.role}</td>
+            <td class="py-2.5 px-3">${u.zone_name}</td>
+            <td class="py-2.5 px-3">${statusBadge}</td>
+            <td class="py-2.5 px-3 text-right space-x-1">
+              <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-[11px] font-bold">
+                ${u.status === 'active' ? 'Mark Outgoing' : 'Re-Activate'}
+              </button>
+              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1 rounded text-[11px] font-bold">
+                Delete
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    async function handleAddUser(e) {
+      e.preventDefault();
+      const code = document.getElementById('new-emp-code').value.trim().toUpperCase();
+      const name = document.getElementById('new-emp-name').value.trim();
+      const zone = document.getElementById('new-emp-zone').value;
+      const role = document.getElementById('new-emp-role').value;
+
+      const newUser = { emp_code: code, pin_code: '1234', full_name: name, role, zone_name: zone, status: 'active' };
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('app_users').upsert(newUser, { onConflict: 'emp_code' });
+        await loadAllData();
+      } else {
+        usersData.push(newUser);
+        saveLocalFallback();
+        renderDashboard();
+      }
+      e.target.reset();
+    }
+
+    async function toggleEmployeeStatus(empCode) {
+      const user = usersData.find(u => u.emp_code === empCode);
+      if (!user) return;
+      const nextStatus = user.status === 'active' ? 'outgoing' : 'active';
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('app_users').update({ status: nextStatus }).eq('emp_code', empCode);
+        await loadAllData();
+      } else {
+        user.status = nextStatus;
+        saveLocalFallback();
+        renderDashboard();
+      }
+    }
+
+    async function deleteEmployee(empCode) {
+      if (empCode === 'ADMIN01') return alert("Cannot delete Master Admin.");
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('app_users').delete().eq('emp_code', empCode);
+        await loadAllData();
+      } else {
+        usersData = usersData.filter(u => u.emp_code !== empCode);
+        saveLocalFallback();
+        renderDashboard();
+      }
+    }
+
+    // ADMIN ZONE MANAGEMENT
+    function renderZonesGrid() {
+      const grid = document.getElementById('zones-list-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      zonesData.forEach(z => {
+        grid.innerHTML += `
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1">
+            <div class="font-extrabold text-slate-900">${z.zone_name}</div>
+            <div class="text-slate-500">Lat: ${z.center_lat} | Lng: ${z.center_lng}</div>
+            <div class="text-indigo-700 font-bold">Allowed Radius: ${z.radius_meters}m</div>
+          </div>
+        `;
+      });
+    }
+
+    async function handleAddZone(e) {
+      e.preventDefault();
+      const name = document.getElementById('new-zone-name').value.trim();
+      const lat = parseFloat(document.getElementById('new-zone-lat').value);
+      const lng = parseFloat(document.getElementById('new-zone-lng').value);
+      const radius = parseInt(document.getElementById('new-zone-radius').value, 10);
+
+      const newZone = { zone_name: name, center_lat: lat, center_lng: lng, radius_meters: radius, is_pan_india: false };
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('zones').upsert(newZone, { onConflict: 'zone_name' });
+        await loadAllData();
+      } else {
+        zonesData.push(newZone);
+        saveLocalFallback();
+        openDashboardPortal();
+      }
+      e.target.reset();
+    }
+
+    function switchDashTab(tabId) {
+      ['tab-attendance', 'tab-employees', 'tab-zones'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+    }
+
+    function viewPhoto(empCode) {
+      const log = attendanceData.find(a => a.emp_code === empCode && a.att_date === todayStr);
+      if (!log || !log.photo_base64) return;
+      document.getElementById('modal-img').src = log.photo_base64;
+      document.getElementById('modal-caption').textContent = `${log.full_name} (${log.zone_name}) - ${log.att_time}`;
+      document.getElementById('photo-modal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photo-modal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
