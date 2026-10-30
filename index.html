@@ -294,7 +294,7 @@
         <div id="area-breakdown-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </div>
 
-      <!-- TABS (SHIFTED "CREATE PROJECT" TO THE LAST / RIGHT POSITION) -->
+      <!-- TABS -->
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="border-b border-slate-200 bg-slate-50 px-4 pt-3 flex flex-wrap gap-2">
           <button onclick="switchDashTab('tab-attendance')" id="btn-tab-attendance" class="px-4 py-2 text-xs font-extrabold rounded-t-xl bg-white text-blue-700 border-t border-x border-slate-200">
@@ -327,7 +327,7 @@
           </table>
         </div>
 
-        <!-- TAB 2: MANAGE EMPLOYEES (EXCLUDES COORDINATORS & ADMINS) -->
+        <!-- TAB 2: MANAGE USERS (WITH ROLE FILTER DROPDOWN) -->
         <div id="tab-employees" class="hidden p-4 space-y-5">
           <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-200">
             <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-2">➕ Add / Edit User Profile</h4>
@@ -339,15 +339,28 @@
               <input type="text" id="new-emp-pan" placeholder="PAN Card" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold uppercase" />
               <input type="text" id="new-emp-designation" placeholder="Designation (e.g. Senior Exec)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
               <select id="new-emp-zone" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"></select>
-              <select id="new-emp-role" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
+              <select id="new-emp-role" onchange="onRoleSelectionChange()" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
                 <option value="employee">Role: Employee</option>
                 <option value="coordinator">Role: Coordinator</option>
                 <option value="admin">Role: Admin</option>
               </select>
-              <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow">
+              <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow sm:col-span-4">
                 Save / Update User
               </button>
             </form>
+          </div>
+
+          <!-- ROLE FILTER BAR FOR USERS TABLE -->
+          <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-extrabold uppercase text-slate-600">Filter By Role:</span>
+              <select id="user-role-filter" onchange="renderEmployeeMaintenanceTable()" class="bg-white border border-slate-300 text-slate-800 text-xs font-bold rounded-lg px-3 py-1.5">
+                <option value="ALL">All Roles</option>
+                <option value="employee">Employees Only</option>
+                <option value="coordinator">Coordinators Only</option>
+                <option value="admin">Admins Only</option>
+              </select>
+            </div>
           </div>
 
           <div class="overflow-x-auto">
@@ -369,7 +382,7 @@
           </div>
         </div>
 
-        <!-- TAB 3: CREATE PROJECT & COORDINATOR (NOW SHIFTED TO RIGHT / LAST) -->
+        <!-- TAB 3: CREATE PROJECT & COORDINATOR -->
         <div id="tab-projects" class="hidden p-4 space-y-5">
           <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200">
             <h4 class="text-xs font-extrabold uppercase text-indigo-950 mb-2.5">🏢 Create New Project / Area & Assign Coordinator</h4>
@@ -1124,6 +1137,18 @@
       }
     }
 
+    // AUTO-LOCK AREA TO PAN-INDIA WHEN ADMIN ROLE IS SELECTED IN FORM
+    function onRoleSelectionChange() {
+      const roleSel = document.getElementById('new-emp-role').value;
+      const zoneSel = document.getElementById('new-emp-zone');
+      if (roleSel === 'admin') {
+        zoneSel.value = 'Pan-India (Remote)';
+        zoneSel.disabled = true;
+      } else {
+        zoneSel.disabled = false;
+      }
+    }
+
     function getFilteredAttendanceRows() {
       const areaSelect = document.getElementById('area-filter-select');
       const selectedArea = currentUser.role === 'coordinator'
@@ -1269,8 +1294,6 @@
       if (!grid) return;
       grid.innerHTML = zonesData.map(z => {
         const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name && u.role === 'employee');
-        
-        // FIX: Display Coordinator's Full Name instead of supervisor text
         const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name && u.status === 'active');
         const coordNames = coords.length ? coords.map(c => c.full_name).join(', ') : 'No Coordinator';
 
@@ -1436,17 +1459,19 @@
       document.body.removeChild(link);
     }
 
-    function renderEmployeeMaintenanceTable(selectedArea = 'ALL') {
+    function renderEmployeeMaintenanceTable() {
       const tbody = document.getElementById('employee-list-body');
-      
-      // FIX: Filter to show ONLY employees in Manage Employees table (excluding coordinators and admins)
-      const visibleUsers = currentUser.role === 'coordinator'
-        ? usersData.filter(u => u.zone_name === currentUser.zone_name && u.role === 'employee')
-        : (selectedArea === 'ALL' || !selectedArea 
-            ? usersData.filter(u => u.role === 'employee') 
-            : usersData.filter(u => u.zone_name === selectedArea && u.role === 'employee'));
+      const roleFilter = document.getElementById('user-role-filter').value;
 
-      tbody.innerHTML = visibleUsers.map(u => {
+      let list = currentUser.role === 'coordinator' 
+        ? usersData.filter(u => u.zone_name === currentUser.zone_name && u.role === 'employee')
+        : usersData;
+
+      if (roleFilter !== 'ALL') {
+        list = list.filter(u => u.role === roleFilter);
+      }
+
+      tbody.innerHTML = list.map(u => {
         const statusBadge = u.status === 'active'
           ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[11px] font-bold">Active</span>`
           : `<span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[11px] font-bold">Outgoing</span>`;
@@ -1459,7 +1484,7 @@
               <button onclick="openEmployeeProfileModal('${u.emp_code}')" class="font-bold text-blue-700 hover:underline">${u.full_name} ↗</button>
             </td>
             <td class="py-2.5 px-3 uppercase text-[11px] font-extrabold text-indigo-700">${u.role}</td>
-            <td class="py-2.5 px-3 font-semibold text-slate-700">${u.designation || 'Employee'}</td>
+            <td class="py-2.5 px-3 font-semibold text-slate-700">${u.designation || u.role}</td>
             <td class="py-2.5 px-3 font-semibold">${u.zone_name}</td>
             <td class="py-2.5 px-3">${statusBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
@@ -1484,6 +1509,7 @@
       document.getElementById('new-emp-designation').value = u.designation || '';
       document.getElementById('new-emp-zone').value = u.zone_name;
       document.getElementById('new-emp-role').value = u.role;
+      onRoleSelectionChange();
       document.getElementById('new-emp-name').focus();
     }
 
@@ -1495,8 +1521,8 @@
       const phone = document.getElementById('new-emp-phone').value.trim();
       const pan = document.getElementById('new-emp-pan').value.trim().toUpperCase();
       const designation = document.getElementById('new-emp-designation').value.trim();
-      const zone = currentUser.role === 'coordinator' ? currentUser.zone_name : document.getElementById('new-emp-zone').value;
       const role = currentUser.role === 'coordinator' ? 'employee' : document.getElementById('new-emp-role').value;
+      const zone = role === 'admin' ? 'Pan-India (Remote)' : (currentUser.role === 'coordinator' ? currentUser.zone_name : document.getElementById('new-emp-zone').value);
 
       const userObj = { emp_code: code, pin_code: pin, full_name: name, role, designation, zone_name: zone, status: 'active', phone, pan_card: pan };
 
@@ -1520,6 +1546,7 @@
       document.getElementById('new-emp-phone').value = '';
       document.getElementById('new-emp-pan').value = '';
       document.getElementById('new-emp-designation').value = '';
+      onRoleSelectionChange();
     }
 
     async function toggleEmployeeStatus(empCode) {
