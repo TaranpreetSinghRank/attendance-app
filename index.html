@@ -2,13 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- POINT 3: iOS Safari / WebKit & Android PWA Compatibility Meta Tags -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#1e3a8a" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="GeoAttend Pro" />
-  <meta name="mobile-web-app-capable" content="yes" />
   <title>GeoAttend Pro | Enterprise Workforce Attendance</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -30,7 +25,7 @@
 
   <!-- TOP HEADER -->
   <header class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-lg sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="bg-blue-500/20 p-2 rounded-xl border border-blue-400/30">
           <i data-lucide="map-pinned" class="w-5 h-5 text-blue-300"></i>
@@ -57,7 +52,7 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- 1. LOGIN SCREEN (WITH POINT 1 RESET FLOW)  -->
+    <!-- 1. LOGIN SCREEN                            -->
     <!-- ========================================== -->
     <section id="login-screen" class="max-w-md mx-auto mt-6">
       <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8">
@@ -107,9 +102,9 @@
       </div>
     </section>
 
-    <!-- ========================================================== -->
-    <!-- 2. EMPLOYEE PORTAL (WITH LOCKOUT [PT 8] & RETAKE [PT 7])   -->
-    <!-- ========================================================== -->
+    <!-- ========================================== -->
+    <!-- 2. EMPLOYEE PORTAL                         -->
+    <!-- ========================================== -->
     <section id="employee-screen" class="hidden max-w-lg mx-auto space-y-4">
       <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4">
@@ -123,7 +118,6 @@
           </div>
         </div>
 
-        <!-- POINT 8: DAILY DUPLICATE SUBMISSION LOCKOUT CARD -->
         <div id="emp-lockout-card" class="hidden bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-5 text-center space-y-3">
           <div class="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto shadow">
             <i data-lucide="check-circle-2" class="w-7 h-7"></i>
@@ -136,7 +130,6 @@
           <img id="lockout-photo" class="w-56 h-40 object-cover rounded-xl mx-auto border border-emerald-300 shadow-sm hidden" alt="Submitted selfie" />
         </div>
 
-        <!-- ACTIVE CAPTURE WORKFLOW -->
         <div id="emp-capture-workflow">
           <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 flex items-start justify-between gap-2">
             <div class="flex items-start gap-2">
@@ -154,7 +147,6 @@
             </button>
           </div>
 
-          <!-- POINT 3: iOS Safari WebKit Compatible Video Element -->
           <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border-2 border-slate-200">
             <video id="camera-stream" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover hidden"></video>
             <canvas id="camera-canvas" class="hidden"></canvas>
@@ -176,7 +168,6 @@
             </div>
           </div>
 
-          <!-- POINT 7: CAMERA PREVIEW & RETAKE CONTROLS -->
           <div class="mt-4">
             <button id="btn-take-preview" onclick="capturePreviewPhoto()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm">
               <i data-lucide="camera" class="w-4 h-4"></i>
@@ -205,19 +196,18 @@
     <!-- ========================================== -->
     <section id="dashboard-screen" class="hidden space-y-5">
 
-      <!-- POINT 1: ADMIN PENDING PASSWORD RESET REQUESTS PANEL -->
       <div id="admin-reset-requests-panel" class="hidden bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
           <div class="flex items-center gap-2">
             <span class="bg-amber-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-lg">🔑 Action Required</span>
             <h3 class="text-sm font-extrabold text-amber-950">Pending Password / PIN Reset Requests</h3>
           </div>
-          <span class="text-xs font-semibold text-amber-800">Approve request so user can set a new PIN on Login Screen</span>
+          <span class="text-xs font-semibold text-amber-800">Approve request so user can set a new PIN</span>
         </div>
         <div id="admin-reset-requests-list" class="grid grid-cols-1 md:grid-cols-2 gap-2.5"></div>
       </div>
 
-      <!-- TOP BAR: AREA FILTER + CALENDAR [PT 6] + EXCEL EXPORT [PT 9] -->
+      <!-- TOP BAR: REFRESH FIRST, CHOOSE AREA TEXT, EXCEL EXPORT [POINT 1] -->
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
@@ -227,24 +217,28 @@
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
+            <!-- REFRESH BUTTON (PLACES FIRST & RESETS AREA DROPDOWN TO "-- Choose Area --") -->
+            <button onclick="handleRefreshAction()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2 rounded-xl border border-blue-200 flex items-center gap-1 shadow-sm">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh
+            </button>
+
             <div id="area-filter-wrapper" class="flex items-center gap-1.5">
               <label class="text-xs font-bold text-slate-500 uppercase">Area:</label>
+              <!-- AREA SELECT WITH "-- Choose Area --" PLACEHOLDER -->
               <select id="area-filter-select" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2">
+                <option value="" disabled selected>-- Choose Area --</option>
                 <option value="ALL">All Projects / Areas (Pan-India)</option>
               </select>
             </div>
 
+            <!-- EXCEL EXPORT BUTTON (PLACES SECOND) -->
             <button onclick="exportFilteredToExcelCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5">
               <i data-lucide="download" class="w-4 h-4"></i> Export Excel (.CSV)
-            </button>
-
-            <button onclick="loadAllData()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2 rounded-xl border border-blue-200 flex items-center gap-1">
-              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
             </button>
           </div>
         </div>
 
-        <!-- POINT 6: HISTORICAL CALENDAR FILTER -->
+        <!-- HISTORICAL CALENDAR FILTER -->
         <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-1.5">
             <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1">📅 Period:</span>
@@ -319,13 +313,14 @@
           </button>
         </div>
 
-        <!-- TAB 1: ATTENDANCE TABLE -->
+        <!-- TAB 1: ATTENDANCE TABLE (WITH DESIGNATION COLUMN [POINT 4]) -->
         <div id="tab-attendance" class="p-4 overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-400">
                 <th class="py-2.5 px-3">Date</th>
                 <th class="py-2.5 px-3">Employee (Click for Profile)</th>
+                <th class="py-2.5 px-3">Designation</th>
                 <th class="py-2.5 px-3">Project Area</th>
                 <th class="py-2.5 px-3">Status</th>
                 <th class="py-2.5 px-3">Actual Recorded Location (Google Maps)</th>
@@ -337,7 +332,7 @@
           </table>
         </div>
 
-        <!-- TAB 2: MANAGE EMPLOYEES -->
+        <!-- TAB 2: MANAGE EMPLOYEES (WITH DESIGNATION INPUT) -->
         <div id="tab-employees" class="hidden p-4 space-y-5">
           <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-200">
             <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-2">➕ Add / Edit User Profile</h4>
@@ -347,6 +342,8 @@
               <input type="text" id="new-emp-pin" required placeholder="PIN (1234)" value="1234" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
               <input type="text" id="new-emp-phone" placeholder="Mobile No" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
               <input type="text" id="new-emp-pan" placeholder="PAN Card" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold uppercase" />
+              <!-- DESIGNATION INPUT -->
+              <input type="text" id="new-emp-designation" placeholder="Designation (e.g. Senior Exec)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
               <select id="new-emp-zone" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"></select>
               <select id="new-emp-role" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
                 <option value="employee">Role: Employee</option>
@@ -367,8 +364,8 @@
                   <th class="py-2.5 px-3">PIN</th>
                   <th class="py-2.5 px-3">Full Name (Click for Profile)</th>
                   <th class="py-2.5 px-3">Role</th>
+                  <th class="py-2.5 px-3">Designation</th>
                   <th class="py-2.5 px-3">Project Area</th>
-                  <th class="py-2.5 px-3">Phone & PAN</th>
                   <th class="py-2.5 px-3">Status</th>
                   <th class="py-2.5 px-3 text-right">Actions</th>
                 </tr>
@@ -399,9 +396,7 @@
 
   </main>
 
-  <!-- ================================================================= -->
-  <!-- POINT 1: FORGOT PASSWORD / ADMIN-APPROVED PIN RESET MODAL         -->
-  <!-- ================================================================= -->
+  <!-- PASSWORD RESET MODAL -->
   <div id="password-reset-modal" onclick="closePasswordResetModal()" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -409,7 +404,7 @@
         <button onclick="closePasswordResetModal()" class="text-xs font-bold text-slate-400 hover:text-slate-700">✕ Close</button>
       </div>
       <p class="text-xs text-slate-600 leading-relaxed">
-        Enter your <b>User ID / Code</b>. This sends a reset request to the Admin. Once the Admin approves your request, click <b>Check / Request</b> again to set your new PIN.
+        Enter your <b>User ID / Code</b>. This sends a reset request to the Admin. Once approved, click "Check / Request" again to set your new PIN.
       </p>
       <div class="space-y-3">
         <div class="flex gap-2">
@@ -431,7 +426,7 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- POINT 5: DETAILED EMPLOYEE PROFILE & COMPLETE HISTORY MODAL       -->
+  <!-- POINT 2: DETAILED EMPLOYEE PROFILE & CALENDAR HISTORY MODAL       -->
   <!-- ================================================================= -->
   <div id="employee-profile-modal" onclick="closeProfileModal()" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
@@ -442,20 +437,39 @@
         </div>
         <button onclick="closeProfileModal()" class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg">✕ Close</button>
       </div>
+
       <div class="p-5 overflow-y-auto space-y-4">
+        <!-- Personal Details -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+          <div><p class="text-[10px] font-bold uppercase text-slate-400">Designation</p><p id="prof-designation" class="font-extrabold text-slate-900 mt-0.5"></p></div>
           <div><p class="text-[10px] font-bold uppercase text-slate-400">Assigned Area</p><p id="prof-zone" class="font-extrabold text-slate-900 mt-0.5"></p></div>
           <div><p class="text-[10px] font-bold uppercase text-slate-400">Contact Info</p><p id="prof-phone" class="font-extrabold text-slate-900 mt-0.5"></p></div>
           <div><p class="text-[10px] font-bold uppercase text-slate-400">PAN Number</p><p id="prof-pan" class="font-extrabold text-slate-900 mt-0.5"></p></div>
-          <div><p class="text-[10px] font-bold uppercase text-slate-400">Govt ID Status</p><p class="font-extrabold text-slate-700 mt-0.5">[Aadhaar Redacted]</p></div>
         </div>
+
+        <!-- POINT 2: PROFILE CALENDAR FILTER -->
+        <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="font-extrabold text-blue-950 flex items-center gap-1.5">
+            <i data-lucide="calendar" class="w-4 h-4 text-blue-700"></i> Filter History by Date Range:
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-600">From:</span>
+            <input type="date" id="prof-date-start" onchange="renderEmployeeProfileHistory()" class="px-2 py-1 rounded-lg border border-slate-300 font-bold bg-white" />
+            <span class="font-bold text-slate-600">To:</span>
+            <input type="date" id="prof-date-end" onchange="renderEmployeeProfileHistory()" class="px-2 py-1 rounded-lg border border-slate-300 font-bold bg-white" />
+          </div>
+        </div>
+
+        <!-- Summary Counters for Profile -->
         <div class="grid grid-cols-3 gap-3 text-center">
           <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl"><p class="text-[10px] font-bold uppercase text-emerald-700">Present Days</p><p id="prof-stat-p" class="text-xl font-black text-emerald-700">0</p></div>
           <div class="bg-rose-50 border border-rose-200 p-2.5 rounded-xl"><p class="text-[10px] font-bold uppercase text-rose-700">Absent Days</p><p id="prof-stat-a" class="text-xl font-black text-rose-700">0</p></div>
           <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl"><p class="text-[10px] font-bold uppercase text-amber-700">Leave Days</p><p id="prof-stat-l" class="text-xl font-black text-amber-700">0</p></div>
         </div>
+
+        <!-- History Table -->
         <div>
-          <h4 class="text-xs font-extrabold uppercase text-slate-700 mb-2">Complete Historical Attendance Log</h4>
+          <h4 class="text-xs font-extrabold uppercase text-slate-700 mb-2">Historical Attendance Log</h4>
           <div class="border border-slate-200 rounded-xl overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
@@ -475,7 +489,7 @@
     </div>
   </div>
 
-  <!-- PHOTO PREVIEW MODAL (WITH POINT 4 DIRECT IMAGE LINK) -->
+  <!-- PHOTO PREVIEW MODAL -->
   <div id="photo-modal" onclick="closePhotoModal()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
       <img id="modal-img" class="w-full h-80 object-cover bg-slate-900" alt="Employee Geo Selfie" />
@@ -494,7 +508,7 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- JAVASCRIPT LOGIC (ALL 9 POINTS ACTIVE + KEYS PRE-INSTALLED)       -->
+  <!-- JAVASCRIPT LOGIC                                                  -->
   <!-- ================================================================= -->
   <script>
     const SUPABASE_URL = "https://whsfpsrevtichsejdggw.supabase.co";
@@ -506,6 +520,7 @@
     const todayStr = new Date().toISOString().split('T')[0];
     let filterStartDate = todayStr;
     let filterEndDate = todayStr;
+    let activeProfileEmpCode = null;
 
     let zonesData = [
       { zone_name: 'Bareilly', center_lat: 28.3670, center_lng: 79.4304, radius_meters: 1500, is_pan_india: false },
@@ -515,12 +530,12 @@
     ];
 
     let usersData = [
-      { emp_code: 'ADMIN01', pin_code: '1234', full_name: 'Master Admin', role: 'admin', zone_name: 'Pan-India (Remote)', status: 'active', phone: '+91 9810000001', pan_card: 'ADMPA1234A' },
-      { emp_code: 'COORD01', pin_code: '1234', full_name: 'Bareilly Coordinator', role: 'coordinator', zone_name: 'Bareilly', status: 'active', phone: '+91 9810000002', pan_card: 'CRDPA1234B' },
-      { emp_code: 'COORD02', pin_code: '1234', full_name: 'Moradabad Coordinator', role: 'coordinator', zone_name: 'Moradabad', status: 'active', phone: '+91 9810000003', pan_card: 'CRDPA1234C' },
-      { emp_code: 'EMP101', pin_code: '1234', full_name: 'Rahul Sharma', role: 'employee', zone_name: 'Bareilly', status: 'active', phone: '+91 9810000101', pan_card: 'EMPPA1010D' },
-      { emp_code: 'EMP102', pin_code: '1234', full_name: 'Amit Verma', role: 'employee', zone_name: 'Moradabad', status: 'active', phone: '+91 9810000102', pan_card: 'EMPPA1020E' },
-      { emp_code: 'EMP103', pin_code: '1234', full_name: 'Priya Singh', role: 'employee', zone_name: 'Pan-India (Remote)', status: 'active', phone: '+91 9810000103', pan_card: 'EMPPA1030F' }
+      { emp_code: 'ADMIN01', pin_code: '1234', full_name: 'Master Admin', role: 'admin', designation: 'Administrator', zone_name: 'Pan-India (Remote)', status: 'active', phone: '+91 9810000001', pan_card: 'ADMPA1234A' },
+      { emp_code: 'COORD01', pin_code: '1234', full_name: 'Bareilly Coordinator', role: 'coordinator', designation: 'Supervisor', zone_name: 'Bareilly', status: 'active', phone: '+91 9810000002', pan_card: 'CRDPA1234B' },
+      { emp_code: 'COORD02', pin_code: '1234', full_name: 'Moradabad Coordinator', role: 'coordinator', designation: 'Supervisor', zone_name: 'Moradabad', status: 'active', phone: '+91 9810000003', pan_card: 'CRDPA1234C' },
+      { emp_code: 'EMP101', pin_code: '1234', full_name: 'Rahul Sharma', role: 'employee', designation: 'Field Executive', zone_name: 'Bareilly', status: 'active', phone: '+91 9810000101', pan_card: 'EMPPA1010D' },
+      { emp_code: 'EMP102', pin_code: '1234', full_name: 'Amit Verma', role: 'employee', designation: 'Field Executive', zone_name: 'Moradabad', status: 'active', phone: '+91 9810000102', pan_card: 'EMPPA1020E' },
+      { emp_code: 'EMP103', pin_code: '1234', full_name: 'Priya Singh', role: 'employee', designation: 'Remote Analyst', zone_name: 'Pan-India (Remote)', status: 'active', phone: '+91 9810000103', pan_card: 'EMPPA1030F' }
     ];
 
     let attendanceData = [];
@@ -531,7 +546,6 @@
     let pendingPhotoBase64 = null;
     let pendingPhotoBlob = null;
 
-    // POINT 3: PWA Web Manifest Injection for iOS & Android Home Screen
     function injectPWAManifest() {
       const manifest = {
         name: "GeoAttend Pro Attendance",
@@ -556,16 +570,15 @@
 
       if (!isSupabaseConfigured) {
         document.getElementById('demo-mode-banner').classList.remove('hidden');
-        if (localStorage.getItem('geo_users_v2')) usersData = JSON.parse(localStorage.getItem('geo_users_v2'));
-        if (localStorage.getItem('geo_att_v2')) attendanceData = JSON.parse(localStorage.getItem('geo_att_v2'));
-        if (localStorage.getItem('geo_zones_v2')) zonesData = JSON.parse(localStorage.getItem('geo_zones_v2'));
-        if (localStorage.getItem('geo_resets_v2')) passwordResetsData = JSON.parse(localStorage.getItem('geo_resets_v2'));
+        if (localStorage.getItem('geo_users_v3')) usersData = JSON.parse(localStorage.getItem('geo_users_v3'));
+        if (localStorage.getItem('geo_att_v3')) attendanceData = JSON.parse(localStorage.getItem('geo_att_v3'));
+        if (localStorage.getItem('geo_zones_v3')) zonesData = JSON.parse(localStorage.getItem('geo_zones_v3'));
+        if (localStorage.getItem('geo_resets_v3')) passwordResetsData = JSON.parse(localStorage.getItem('geo_resets_v3'));
       } else {
         await loadAllData();
       }
     });
 
-    // POINT 4: Resolve Storage Bucket Path, Public URL, or Base64 into Direct Accessible Image URL
     function resolveAccessiblePhotoUrl(log) {
       if (!log) return null;
       const raw = log.photo_url || log.photo_base64;
@@ -580,7 +593,6 @@
       return raw;
     }
 
-    // POINT 2: Parallel Non-Blocking Queries + Coordinator Isolation
     async function loadAllData() {
       if (!isSupabaseConfigured) return;
 
@@ -615,16 +627,23 @@
 
     function saveLocalFallback() {
       if (!isSupabaseConfigured) {
-        localStorage.setItem('geo_users_v2', JSON.stringify(usersData));
-        localStorage.setItem('geo_att_v2', JSON.stringify(attendanceData));
-        localStorage.setItem('geo_zones_v2', JSON.stringify(zonesData));
-        localStorage.setItem('geo_resets_v2', JSON.stringify(passwordResetsData));
+        localStorage.setItem('geo_users_v3', JSON.stringify(usersData));
+        localStorage.setItem('geo_att_v3', JSON.stringify(attendanceData));
+        localStorage.setItem('geo_zones_v3', JSON.stringify(zonesData));
+        localStorage.setItem('geo_resets_v3', JSON.stringify(passwordResetsData));
       }
     }
 
-    // ============================================================================
-    // POINT 1: ADMIN-APPROVED PASSWORD / PIN RESET WORKFLOW
-    // ============================================================================
+    // POINT 1: REFRESH ACTION RESTORES "-- Choose Area --"
+    function handleRefreshAction() {
+      const areaSelect = document.getElementById('area-filter-select');
+      if (areaSelect && currentUser?.role === 'admin') {
+        areaSelect.value = ""; // Resets to "-- Choose Area --" placeholder
+      }
+      loadAllData();
+    }
+
+    // PASSWORD RESET WORKFLOW
     function openPasswordResetModal() {
       const prefill = document.getElementById('login-emp-code').value.trim().toUpperCase();
       document.getElementById('reset-emp-code').value = prefill;
@@ -656,7 +675,7 @@
 
       if (!user) {
         statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300";
-        statusBox.textContent = `User ID "${code}" not found. Please check with your Coordinator or Admin.`;
+        statusBox.textContent = `User ID "${code}" not found.`;
         return;
       }
 
@@ -664,14 +683,14 @@
 
       if (existingReq && existingReq.status === 'approved') {
         statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300";
-        statusBox.textContent = `✔ Admin has APPROVED your PIN reset request! Please enter your new PIN below.`;
+        statusBox.textContent = `✔ Admin approved your request! Enter your new PIN below.`;
         newPinSec.classList.remove('hidden');
         return;
       }
 
       if (existingReq && existingReq.status === 'pending') {
         statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300";
-        statusBox.textContent = `⏳ Your reset request is currently PENDING Admin approval. Once Admin approves it, click "Check / Request" again to set your new PIN.`;
+        statusBox.textContent = `⏳ Request is pending Admin approval.`;
         return;
       }
 
@@ -691,13 +710,13 @@
       saveLocalFallback();
 
       statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-900 border border-blue-300";
-      statusBox.textContent = `📩 Reset Request Sent to Admin! Ask Admin to click "Approve" on their dashboard, then click "Check / Request" here to set your new PIN.`;
+      statusBox.textContent = `📩 Reset Request sent to Admin!`;
     }
 
     async function saveApprovedNewPin() {
       const code = document.getElementById('reset-emp-code').value.trim().toUpperCase();
       const newPin = document.getElementById('reset-new-pin-input').value.trim();
-      if (!newPin || newPin.length < 4) return alert("Please enter a valid PIN (at least 4 digits/characters).");
+      if (!newPin || newPin.length < 4) return alert("Please enter a valid PIN (at least 4 digits).");
 
       if (isSupabaseConfigured) {
         await supabaseClient.from('app_users').update({ pin_code: newPin }).eq('emp_code', code);
@@ -710,7 +729,7 @@
       if (r) r.status = 'completed';
       saveLocalFallback();
 
-      alert(`✔ Your new PIN has been saved! You can now sign in.`);
+      alert(`✔ New PIN saved!`);
       document.getElementById('login-emp-code').value = code;
       document.getElementById('login-pin').value = newPin;
       closePasswordResetModal();
@@ -746,23 +765,16 @@
         <div class="bg-white p-3 rounded-xl border border-amber-300 flex items-center justify-between gap-2">
           <div>
             <div class="font-extrabold text-xs text-slate-900">${r.full_name} (${r.emp_code})</div>
-            <div class="text-[11px] text-slate-500">Project Area: ${r.zone_name || 'N/A'}</div>
+            <div class="text-[11px] text-slate-500">Area: ${r.zone_name || 'N/A'}</div>
           </div>
           <div class="flex gap-1.5">
-            <button onclick="handleAdminResetDecision('${r.emp_code}', 'approved')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">
-              ✔ Approve Reset
-            </button>
-            <button onclick="handleAdminResetDecision('${r.emp_code}', 'rejected')" class="bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold px-2.5 py-1.5 rounded-lg">
-              Reject
-            </button>
+            <button onclick="handleAdminResetDecision('${r.emp_code}', 'approved')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Approve</button>
+            <button onclick="handleAdminResetDecision('${r.emp_code}', 'rejected')" class="bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold px-2.5 py-1.5 rounded-lg">Reject</button>
           </div>
         </div>
       `).join('');
     }
 
-    // ============================================================================
-    // LOGIN & SESSION MANAGEMENT
-    // ============================================================================
     function quickLogin(code) {
       document.getElementById('login-emp-code').value = code;
       document.getElementById('login-pin').value = '1234';
@@ -782,11 +794,11 @@
 
       const user = usersData.find(u => u.emp_code.toUpperCase() === code && u.pin_code === pin);
       if (!user) {
-        alert('Invalid ID or PIN! If you forgot your PIN, click "Forgot Password / Reset PIN?"');
+        alert('Invalid ID or PIN!');
         return;
       }
       if (user.status !== 'active') {
-        alert('Your account is marked as Outgoing/Inactive.');
+        alert('Your account is inactive.');
         return;
       }
 
@@ -795,7 +807,7 @@
 
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('user-session-bar').classList.remove('hidden');
-      document.getElementById('logged-user-badge').textContent = `${user.full_name} (${user.role.toUpperCase()} - ${user.zone_name})`;
+      document.getElementById('logged-user-badge').textContent = `${user.full_name} (${user.role.toUpperCase()})`;
 
       if (user.role === 'employee') openEmployeePortal();
       else openDashboardPortal();
@@ -812,9 +824,6 @@
       document.getElementById('login-screen').classList.remove('hidden');
     }
 
-    // ============================================================================
-    // EMPLOYEE PORTAL: LOCKOUT (POINT 8), CAMERA RETAKE (POINT 7) & STORAGE (POINT 4)
-    // ============================================================================
     function openEmployeePortal() {
       document.getElementById('employee-screen').classList.remove('hidden');
       document.getElementById('emp-zone-title').textContent = currentUser.zone_name;
@@ -869,7 +878,7 @@
       addrText.textContent = "Fetching live location from GPS...";
 
       if (!navigator.geolocation) {
-        addrText.textContent = "GPS not supported on this device";
+        addrText.textContent = "GPS not supported";
         return;
       }
 
@@ -901,7 +910,6 @@
       document.getElementById('stamp-time').textContent = `Time: ${new Date().toLocaleString()}`;
     }
 
-    // POINT 3: iOS Safari + Android Compatible Camera Initialization
     async function startCamera() {
       try {
         stopCamera();
@@ -932,7 +940,7 @@
     }
 
     function capturePreviewPhoto() {
-      if (!currentGPS.lat) return alert("Please wait a moment for your GPS location to lock.");
+      if (!currentGPS.lat) return alert("Please wait for GPS.");
 
       const video = document.getElementById('camera-stream');
       const canvas = document.getElementById('camera-canvas');
@@ -951,7 +959,7 @@
       ctx.fillRect(0, canvas.height - 90, canvas.width, 90);
       ctx.fillStyle = "#fbbf24";
       ctx.font = "bold 12px monospace";
-      ctx.fillText(`${currentUser.full_name} (${currentUser.emp_code}) | Assigned: ${currentUser.zone_name}`, 10, canvas.height - 66);
+      ctx.fillText(`${currentUser.full_name} (${currentUser.emp_code}) | Area: ${currentUser.zone_name}`, 10, canvas.height - 66);
       ctx.fillStyle = "#6ee7b7";
       ctx.font = "bold 11px monospace";
       ctx.fillText(`Loc: ${(currentGPS.address || '').substring(0, 56)}`, 10, canvas.height - 46);
@@ -982,7 +990,6 @@
       document.getElementById('btn-take-preview').classList.remove('hidden');
     }
 
-    // POINT 4: Upload Photo to Supabase Storage & Save Direct Public URL in Database
     async function confirmAndSubmitAttendance() {
       if (!pendingPhotoBase64) return;
       const submitBtn = document.getElementById('btn-final-submit');
@@ -1036,9 +1043,6 @@
       checkEmployeeDailyLockout();
     }
 
-    // ============================================================================
-    // POINT 6: HISTORICAL CALENDAR FILTER
-    // ============================================================================
     function setDatePreset(preset) {
       const now = new Date();
       let start = new Date();
@@ -1079,9 +1083,6 @@
       renderDashboard();
     }
 
-    // ============================================================================
-    // DASHBOARD RENDERING
-    // ============================================================================
     function openDashboardPortal() {
       document.getElementById('dashboard-screen').classList.remove('hidden');
       populateZoneDropdowns();
@@ -1126,27 +1127,32 @@
     function populateZoneDropdowns() {
       const areaSelect = document.getElementById('area-filter-select');
       const newEmpZone = document.getElementById('new-emp-zone');
-      if (currentUser?.role === 'coordinator') return;
+      if (currentUser && currentUser.role === 'coordinator') return;
 
-      const prevSelected = areaSelect.value || 'ALL';
-      areaSelect.innerHTML = `<option value="ALL">All Projects / Areas (Pan-India)</option>`;
+      const prevSelected = areaSelect.value;
+      areaSelect.innerHTML = `<option value="" disabled selected>-- Choose Area --</option><option value="ALL">All Projects / Areas (Pan-India)</option>`;
       newEmpZone.innerHTML = ``;
       zonesData.forEach(z => {
         areaSelect.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
         newEmpZone.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
       });
-      if ([...areaSelect.options].some(o => o.value === prevSelected)) areaSelect.value = prevSelected;
+      if (prevSelected && [...areaSelect.options].some(o => o.value === prevSelected)) {
+        areaSelect.value = prevSelected;
+      }
     }
 
     function getFilteredAttendanceRows() {
+      const areaSelect = document.getElementById('area-filter-select');
       const selectedArea = currentUser.role === 'coordinator'
         ? currentUser.zone_name
-        : (document.getElementById('area-filter-select').value || 'ALL');
+        : (areaSelect.value || 'ALL');
 
-      const activeEmployees = usersData.filter(u => u.role === 'employee' && u.status === 'active');
-      const filteredEmployees = selectedArea === 'ALL'
-        ? activeEmployees
-        : activeEmployees.filter(u => u.zone_name === selectedArea);
+      const activeEmployees = usersData.filter(u => u.status === 'active');
+      const employeeEmps = activeEmployees.filter(u => u.role === 'employee');
+
+      const filteredEmployees = selectedArea === 'ALL' || !selectedArea
+        ? employeeEmps
+        : employeeEmps.filter(u => u.zone_name === selectedArea);
 
       const isSingleDate = filterStartDate === filterEndDate;
       const rows = [];
@@ -1158,6 +1164,7 @@
             att_date: filterStartDate,
             emp_code: emp.emp_code,
             full_name: emp.full_name,
+            designation: emp.designation || (emp.role === 'coordinator' ? 'Supervisor' : 'Employee'),
             zone_name: emp.zone_name,
             status: log ? log.status : 'Absent',
             att_time: log ? log.att_time : '-',
@@ -1172,13 +1179,15 @@
         const rangeLogs = attendanceData.filter(a =>
           a.att_date >= filterStartDate &&
           a.att_date <= filterEndDate &&
-          (selectedArea === 'ALL' || a.zone_name === selectedArea)
+          (selectedArea === 'ALL' || !selectedArea || a.zone_name === selectedArea)
         );
         rangeLogs.forEach(log => {
+          const emp = usersData.find(u => u.emp_code === log.emp_code);
           rows.push({
             att_date: log.att_date,
             emp_code: log.emp_code,
             full_name: log.full_name,
+            designation: emp?.designation || (emp?.role === 'coordinator' ? 'Supervisor' : 'Employee'),
             zone_name: log.zone_name,
             status: log.status,
             att_time: log.att_time || '-',
@@ -1241,6 +1250,7 @@
                 <div class="text-[11px] text-slate-400">${r.emp_code}</div>
               </button>
             </td>
+            <td class="py-2.5 px-3 font-semibold text-slate-700">${r.designation}</td>
             <td class="py-2.5 px-3"><span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">${r.zone_name}</span></td>
             <td class="py-2.5 px-3"><span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">${r.status}</span></td>
             <td class="py-2.5 px-3 max-w-xs">${recordedLocationHTML}</td>
@@ -1254,7 +1264,7 @@
         `;
       });
 
-      document.getElementById('attendance-table-body').innerHTML = rowsHTML || `<tr><td colspan="7" class="py-6 text-center text-slate-400 font-bold">No records found for this date filter.</td></tr>`;
+      document.getElementById('attendance-table-body').innerHTML = rowsHTML || `<tr><td colspan="8" class="py-6 text-center text-slate-400 font-bold">Please select an area from the dropdown above to view records.</td></tr>`;
       document.getElementById('stat-total').textContent = filteredEmployees.length;
       document.getElementById('stat-present').textContent = presentCount;
       document.getElementById('stat-absent').textContent = absentCount;
@@ -1271,7 +1281,7 @@
       const grid = document.getElementById('area-breakdown-grid');
       if (!grid) return;
       grid.innerHTML = zonesData.map(z => {
-        const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name);
+        const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name && u.role === 'employee');
         const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name && u.status === 'active');
         const coordNames = coords.length ? coords.map(c => `${c.full_name} (${c.emp_code})`).join(', ') : 'No Coordinator';
 
@@ -1308,7 +1318,7 @@
     function filterByAreaCard(zoneName) {
       if (currentUser.role !== 'admin') return;
       const sel = document.getElementById('area-filter-select');
-      sel.value = sel.value === zoneName ? 'ALL' : zoneName;
+      sel.value = sel.value === zoneName ? '' : zoneName;
       renderDashboard();
     }
 
@@ -1344,21 +1354,36 @@
     }
 
     // ============================================================================
-    // POINT 5: INDIVIDUAL EMPLOYEE PROFILE MODAL & HISTORICAL LOGS
+    // POINT 2: EMPLOYEE PROFILE MODAL WITH CALENDAR FILTER
     // ============================================================================
     function openEmployeeProfileModal(empCode) {
       const emp = usersData.find(u => u.emp_code === empCode);
       if (!emp) return;
       if (currentUser.role === 'coordinator' && emp.zone_name !== currentUser.zone_name) return;
 
+      activeProfileEmpCode = empCode;
       document.getElementById('prof-role-badge').textContent = `${emp.role.toUpperCase()} • ${emp.status.toUpperCase()}`;
       document.getElementById('prof-full-name').textContent = `${emp.full_name} (${emp.emp_code})`;
+      document.getElementById('prof-designation').textContent = emp.designation || (emp.role === 'coordinator' ? 'Supervisor' : 'Employee');
       document.getElementById('prof-zone').textContent = emp.zone_name;
-      document.getElementById('prof-phone').textContent = emp.phone || 'Not Added Yet';
-      document.getElementById('prof-pan').textContent = emp.pan_card || 'Not Added Yet';
+      document.getElementById('prof-phone').textContent = emp.phone || 'Not Added';
+      document.getElementById('prof-pan').textContent = emp.pan_card || 'Not Added';
+
+      // Default profile date filter to current main filter dates
+      document.getElementById('prof-date-start').value = filterStartDate;
+      document.getElementById('prof-date-end').value = filterEndDate;
+
+      renderEmployeeProfileHistory();
+      document.getElementById('employee-profile-modal').classList.remove('hidden');
+    }
+
+    function renderEmployeeProfileHistory() {
+      if (!activeProfileEmpCode) return;
+      const startD = document.getElementById('prof-date-start').value || filterStartDate;
+      const endD = document.getElementById('prof-date-end').value || filterEndDate;
 
       const empHistory = attendanceData
-        .filter(a => a.emp_code === empCode)
+        .filter(a => a.emp_code === activeProfileEmpCode && a.att_date >= startD && a.att_date <= endD)
         .sort((a, b) => b.att_date.localeCompare(a.att_date));
 
       let p = 0, a = 0, l = 0;
@@ -1386,38 +1411,35 @@
       document.getElementById('prof-stat-p').textContent = p;
       document.getElementById('prof-stat-a').textContent = a;
       document.getElementById('prof-stat-l').textContent = l;
-      document.getElementById('prof-history-tbody').innerHTML = historyRows || `<tr><td colspan="5" class="py-5 text-center text-slate-400">No attendance history recorded yet.</td></tr>`;
-      document.getElementById('employee-profile-modal').classList.remove('hidden');
+      document.getElementById('prof-history-tbody').innerHTML = historyRows || `<tr><td colspan="5" class="py-5 text-center text-slate-400">No records found for this date range.</td></tr>`;
     }
 
     function closeProfileModal() {
+      activeProfileEmpCode = null;
       document.getElementById('employee-profile-modal').classList.add('hidden');
     }
 
     // ============================================================================
-    // POINT 9: EXCEL / CSV EXPORT
+    // POINT 3 & 4: EXCEL / CSV EXPORT WITHOUT LAT/LNG, WITH DESIGNATION & PHOTO
     // ============================================================================
     function exportFilteredToExcelCSV() {
       const { rows, selectedArea } = getFilteredAttendanceRows();
       if (!rows.length) return alert("No records found to export.");
 
-      const headers = ["Date", "Employee ID", "Full Name", "Project Area", "Status", "Punch Time", "Live Street Address", "Latitude", "Longitude", "Google Maps Link", "Photo Direct Link"];
+      const headers = ["Date", "Employee ID", "Full Name", "Designation", "Project Area", "Status", "Punch Time", "Live Street Address", "Photo Direct Link"];
       const csvLines = [headers.join(",")];
 
       rows.forEach(r => {
-        const mapLink = r.lat && r.lng ? `https://www.google.com/maps?q=${r.lat},${r.lng}` : "";
         const directPhotoLink = r.photo_resolved && r.photo_resolved.startsWith('http') ? r.photo_resolved : "";
         csvLines.push([
           r.att_date,
           r.emp_code,
           `"${(r.full_name || '').replace(/"/g, '""')}"`,
+          `"${(r.designation || '').replace(/"/g, '""')}"`,
           `"${(r.zone_name || '').replace(/"/g, '""')}"`,
           r.status,
           `"${r.att_time}"`,
           `"${(r.recorded_address || '').replace(/"/g, '""')}"`,
-          r.lat || "",
-          r.lng || "",
-          `"${mapLink}"`,
           `"${directPhotoLink}"`
         ].join(","));
       });
@@ -1426,20 +1448,20 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Attendance_${selectedArea}_${filterStartDate}_to_${filterEndDate}.csv`;
+      link.download = `Attendance_${selectedArea || 'All'}_${filterStartDate}_to_${filterEndDate}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
 
     // ============================================================================
-    // EMPLOYEE & PROJECT MANAGEMENT
+    // EMPLOYEE & PROJECT MANAGEMENT (WITH DESIGNATION [POINT 4])
     // ============================================================================
     function renderEmployeeMaintenanceTable(selectedArea = 'ALL') {
       const tbody = document.getElementById('employee-list-body');
       const visibleUsers = currentUser.role === 'coordinator'
-        ? usersData.filter(u => u.zone_name === currentUser.zone_name && u.role === 'employee')
-        : (selectedArea === 'ALL' ? usersData : usersData.filter(u => u.zone_name === selectedArea));
+        ? usersData.filter(u => u.zone_name === currentUser.zone_name)
+        : (selectedArea === 'ALL' || !selectedArea ? usersData : usersData.filter(u => u.zone_name === selectedArea));
 
       tbody.innerHTML = visibleUsers.map(u => {
         const statusBadge = u.status === 'active'
@@ -1454,13 +1476,13 @@
               <button onclick="openEmployeeProfileModal('${u.emp_code}')" class="font-bold text-blue-700 hover:underline">${u.full_name} ↗</button>
             </td>
             <td class="py-2.5 px-3 uppercase text-[11px] font-extrabold text-indigo-700">${u.role}</td>
+            <td class="py-2.5 px-3 font-semibold text-slate-700">${u.designation || (u.role === 'coordinator' ? 'Supervisor' : 'Employee')}</td>
             <td class="py-2.5 px-3 font-semibold">${u.zone_name}</td>
-            <td class="py-2.5 px-3 text-[11px] text-slate-600">${u.phone || '-'} | PAN: ${u.pan_card || '-'}</td>
             <td class="py-2.5 px-3">${statusBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
-              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-[11px] font-bold">✏️ Edit</button>
-              <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-[11px] font-bold">${u.status === 'active' ? 'Mark Outgoing' : 'Activate'}</button>
-              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1 rounded text-[11px] font-bold">Delete</button>
+              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[11px] font-bold">✏️ Edit</button>
+              <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-[11px] font-bold">${u.status === 'active' ? 'Outgoing' : 'Activate'}</button>
+              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 text-rose-700 px-2.5 py-1 rounded text-[11px] font-bold">Delete</button>
             </td>
           </tr>
         `;
@@ -1470,12 +1492,13 @@
     function prefillEditUser(empCode) {
       const u = usersData.find(x => x.emp_code === empCode);
       if (!u) return;
-      if (currentUser.role === 'coordinator' && (u.zone_name !== currentUser.zone_name || u.role !== 'employee')) return;
+      if (currentUser.role === 'coordinator' && u.zone_name !== currentUser.zone_name) return;
       document.getElementById('new-emp-code').value = u.emp_code;
       document.getElementById('new-emp-name').value = u.full_name;
       document.getElementById('new-emp-pin').value = u.pin_code;
       document.getElementById('new-emp-phone').value = u.phone || '';
       document.getElementById('new-emp-pan').value = u.pan_card || '';
+      document.getElementById('new-emp-designation').value = u.designation || '';
       document.getElementById('new-emp-zone').value = u.zone_name;
       document.getElementById('new-emp-role').value = u.role;
       document.getElementById('new-emp-name').focus();
@@ -1488,10 +1511,11 @@
       const pin = document.getElementById('new-emp-pin').value.trim() || '1234';
       const phone = document.getElementById('new-emp-phone').value.trim();
       const pan = document.getElementById('new-emp-pan').value.trim().toUpperCase();
+      const designation = document.getElementById('new-emp-designation').value.trim();
       const zone = currentUser.role === 'coordinator' ? currentUser.zone_name : document.getElementById('new-emp-zone').value;
       const role = currentUser.role === 'coordinator' ? 'employee' : document.getElementById('new-emp-role').value;
 
-      const userObj = { emp_code: code, pin_code: pin, full_name: name, role, zone_name: zone, status: 'active', phone, pan_card: pan };
+      const userObj = { emp_code: code, pin_code: pin, full_name: name, role, designation, zone_name: zone, status: 'active', phone, pan_card: pan };
 
       if (isSupabaseConfigured) {
         const { error } = await supabaseClient.from('app_users').upsert(userObj, { onConflict: 'emp_code' });
@@ -1512,6 +1536,7 @@
       document.getElementById('new-emp-name').value = '';
       document.getElementById('new-emp-phone').value = '';
       document.getElementById('new-emp-pan').value = '';
+      document.getElementById('new-emp-designation').value = '';
     }
 
     async function toggleEmployeeStatus(empCode) {
@@ -1561,6 +1586,7 @@
             pin_code: coordPin,
             full_name: coordName,
             role: 'coordinator',
+            designation: 'Supervisor',
             zone_name: areaName,
             status: 'active'
           }, { onConflict: 'emp_code' });
@@ -1570,7 +1596,7 @@
         if (!zonesData.some(z => z.zone_name === areaName)) zonesData.push(newZone);
         if (coordCode && coordName) {
           usersData = usersData.filter(u => u.emp_code !== coordCode);
-          usersData.push({ emp_code: coordCode, pin_code: coordPin, full_name: coordName, role: 'coordinator', zone_name: areaName, status: 'active' });
+          usersData.push({ emp_code: coordCode, pin_code: coordPin, full_name: coordName, role: 'coordinator', designation: 'Supervisor', zone_name: areaName, status: 'active' });
         }
         saveLocalFallback();
         populateZoneDropdowns();
@@ -1591,25 +1617,25 @@
         const emps = usersData.filter(u => u.role === 'employee' && u.zone_name === z.zone_name && u.status === 'active');
 
         const coordBadges = coords.length
-          ? coords.map(c => `<span class="inline-block bg-indigo-100 text-indigo-900 font-bold px-2.5 py-1 rounded-lg text-xs">${c.full_name} (ID: ${c.emp_code} | PIN: ${c.pin_code})</span>`).join(' ')
-          : `<span class="text-xs text-rose-600 font-semibold">No Coordinator Assigned Yet</span>`;
+          ? coords.map(c => `<span class="inline-block bg-indigo-100 text-indigo-900 font-bold px-2.5 py-1 rounded-lg text-xs">${c.full_name} (${c.emp_code})</span>`).join(' ')
+          : `<span class="text-xs text-rose-600 font-semibold">No Coordinator Assigned</span>`;
 
         const empNames = emps.length
           ? emps.map(e => `<span class="inline-block bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">${e.full_name} (${e.emp_code})</span>`).join(' ')
-          : `<span class="text-xs text-slate-400">No employees added under this project yet</span>`;
+          : `<span class="text-xs text-slate-400">No employees under this project</span>`;
 
         return `
           <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
               <span class="font-extrabold text-sm text-slate-900">📍 ${z.zone_name}</span>
-              <span class="text-xs font-bold text-slate-500">${emps.length} Active Employees</span>
+              <span class="text-xs font-bold text-slate-500">${emps.length} Active Staff</span>
             </div>
             <div>
-              <p class="text-[10px] font-extrabold uppercase text-slate-400 mb-1">Assigned Coordinator / Supervisor:</p>
+              <p class="text-[10px] font-extrabold uppercase text-slate-400 mb-1">Coordinator:</p>
               <div class="flex flex-wrap gap-1">${coordBadges}</div>
             </div>
             <div>
-              <p class="text-[10px] font-extrabold uppercase text-slate-400 mb-1">Employees Under This Project:</p>
+              <p class="text-[10px] font-extrabold uppercase text-slate-400 mb-1">Employees:</p>
               <div class="flex flex-wrap gap-1">${empNames}</div>
             </div>
           </div>
@@ -1629,8 +1655,8 @@
       const imgUrl = resolveAccessiblePhotoUrl(log);
       if (!imgUrl) return;
       document.getElementById('modal-img').src = imgUrl;
-      document.getElementById('modal-caption').textContent = `${log.full_name} (${empCode}) — Assigned: ${log.zone_name} | ${log.att_date} ${log.att_time}`;
-      document.getElementById('modal-address').textContent = `📍 Recorded Location: ${log.recorded_address || 'GPS Coords Captured'}`;
+      document.getElementById('modal-caption').textContent = `${log.full_name} (${empCode}) — ${log.zone_name} | ${log.att_date} ${log.att_time}`;
+      document.getElementById('modal-address').textContent = `📍 Recorded Location: ${log.recorded_address || 'GPS Captured'}`;
       document.getElementById('modal-map-link').href = `https://www.google.com/maps?q=${log.lat},${log.lng}`;
       document.getElementById('modal-direct-img-link').href = imgUrl;
       document.getElementById('photo-modal').classList.remove('hidden');
