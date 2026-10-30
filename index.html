@@ -2,35 +2,45 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- POINT 3: iOS Safari / WebKit & Android PWA Compatibility Meta Tags -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#1e3a8a" />
-  <title>GeoAttend Pro | Project & Workforce Attendance</title>
-  <!-- Tailwind CSS -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GeoAttend Pro" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>GeoAttend Pro | Enterprise Workforce Attendance</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f1f5f9; }
-    video { transform: scaleX(-1); }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    video {
+      transform: scaleX(-1);
+      -webkit-transform: scaleX(-1);
+    }
   </style>
 </head>
 <body class="min-h-screen text-slate-800 pb-14">
 
   <!-- TOP HEADER -->
   <header class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-lg sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="bg-blue-500/20 p-2 rounded-xl border border-blue-400/30">
-          <i data-lucide="map-pinned" class="w-6 h-6 text-blue-300"></i>
+          <i data-lucide="map-pinned" class="w-5 h-5 text-blue-300"></i>
         </div>
         <div>
-          <h1 class="font-bold text-lg leading-tight">GeoAttend Pro</h1>
-          <p class="text-xs text-blue-200">Live Location & Photo Attendance System</p>
+          <h1 class="font-bold text-base sm:text-lg leading-tight">GeoAttend Pro</h1>
+          <p class="text-[11px] text-blue-200">Complete Enterprise Geo-Attendance System</p>
         </div>
       </div>
-      <div id="user-session-bar" class="hidden flex items-center space-x-2 sm:space-x-3">
+      <div id="user-session-bar" class="hidden flex items-center space-x-2">
         <span id="logged-user-badge" class="text-xs bg-white/10 px-3 py-1.5 rounded-full font-semibold border border-white/15"></span>
         <button onclick="logout()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1">
           <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Logout
@@ -39,27 +49,21 @@
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 mt-6">
+  <main class="max-w-6xl mx-auto px-4 mt-5">
 
-    <!-- DEMO BANNER IF SUPABASE KEYS NOT ADDED YET -->
-    <div id="demo-mode-banner" class="hidden mb-5 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm">
-      <div class="flex items-start gap-3">
-        <i data-lucide="info" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
-        <div class="text-xs text-amber-900">
-          <p class="font-bold text-sm">Offline Demo Storage Active</p>
-          <p>Paste your <b>SUPABASE_URL</b> and <b>SUPABASE_ANON_KEY</b> in <code>index.html</code> to sync across all phones.</p>
-        </div>
-      </div>
+    <!-- DEMO BANNER -->
+    <div id="demo-mode-banner" class="hidden mb-4 bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-r-xl text-xs text-amber-900">
+      <b>Offline Demo Storage Active:</b> Paste your <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> to sync across devices.
     </div>
 
     <!-- ========================================== -->
-    <!-- 1. LOGIN SCREEN                            -->
+    <!-- 1. LOGIN SCREEN (WITH POINT 1 RESET FLOW)  -->
     <!-- ========================================== -->
-    <section id="login-screen" class="max-w-md mx-auto mt-8">
+    <section id="login-screen" class="max-w-md mx-auto mt-6">
       <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8">
-        <div class="text-center mb-6">
-          <div class="w-14 h-14 bg-blue-600/10 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <i data-lucide="shield-check" class="w-8 h-8"></i>
+        <div class="text-center mb-5">
+          <div class="w-12 h-12 bg-blue-600/10 text-blue-700 rounded-2xl flex items-center justify-center mx-auto mb-2.5">
+            <i data-lucide="shield-check" class="w-7 h-7"></i>
           </div>
           <h2 class="text-2xl font-extrabold text-slate-900">Portal Sign In</h2>
           <p class="text-xs text-slate-500 mt-1">Admin • Coordinator • Employee</p>
@@ -72,7 +76,12 @@
               class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-bold uppercase" />
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">PIN Code</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold uppercase text-slate-600">PIN / Password</label>
+              <button type="button" onclick="openPasswordResetModal()" class="text-xs font-extrabold text-blue-600 hover:underline">
+                Forgot Password / Reset PIN?
+              </button>
+            </div>
             <input type="password" id="login-pin" required value="1234"
               class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-bold" />
           </div>
@@ -81,8 +90,8 @@
           </button>
         </form>
 
-        <div class="mt-6 pt-5 border-t border-slate-200">
-          <p class="text-[11px] font-bold text-slate-400 uppercase text-center mb-3">1-Click Quick Test Logins (PIN: 1234)</p>
+        <div class="mt-6 pt-4 border-t border-slate-200">
+          <p class="text-[11px] font-bold text-slate-400 uppercase text-center mb-2.5">1-Click Quick Test Logins (PIN: 1234)</p>
           <div class="grid grid-cols-3 gap-2">
             <button onclick="quickLogin('ADMIN01')" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold py-2 px-2 rounded-lg border border-indigo-200">
               👑 Admin<br><span class="text-[10px] font-normal">ADMIN01</span>
@@ -101,9 +110,9 @@
     <!-- ========================================================== -->
     <!-- 2. EMPLOYEE PORTAL (WITH LOCKOUT [PT 8] & RETAKE [PT 7])   -->
     <!-- ========================================================== -->
-    <section id="employee-screen" class="hidden max-w-lg mx-auto space-y-5">
+    <section id="employee-screen" class="hidden max-w-lg mx-auto space-y-4">
       <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4">
           <div>
             <span class="text-[11px] font-bold uppercase text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">Assigned Project / Area</span>
             <h3 id="emp-zone-title" class="text-xl font-extrabold text-slate-900 mt-1">Bareilly</h3>
@@ -127,42 +136,39 @@
           <img id="lockout-photo" class="w-56 h-40 object-cover rounded-xl mx-auto border border-emerald-300 shadow-sm hidden" alt="Submitted selfie" />
         </div>
 
-        <!-- ACTIVE CAPTURE WORKFLOW (HIDDEN ONCE SUBMITTED TODAY) -->
+        <!-- ACTIVE CAPTURE WORKFLOW -->
         <div id="emp-capture-workflow">
-          <!-- Live Google / Street Location Box -->
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-start gap-2.5">
-                <div class="p-2 bg-blue-100 text-blue-700 rounded-lg mt-0.5">
-                  <i data-lucide="map-pin" class="w-5 h-5"></i>
-                </div>
-                <div>
-                  <p class="text-xs font-extrabold text-slate-800">Current Detected Location (Will Be Recorded):</p>
-                  <p class="text-xs text-blue-800 font-semibold mt-0.5" id="gps-address-text">Detecting live street/area address...</p>
-                  <p class="text-[11px] text-slate-500 mt-0.5" id="gps-coord-text">Waiting for GPS satellite...</p>
-                </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 flex items-start justify-between gap-2">
+            <div class="flex items-start gap-2">
+              <div class="p-2 bg-blue-100 text-blue-700 rounded-lg mt-0.5">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
               </div>
-              <button onclick="fetchLiveGPS()" class="shrink-0 text-xs bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg font-bold hover:bg-slate-100">
-                Refresh
-              </button>
+              <div>
+                <p class="text-xs font-extrabold text-slate-800">Current Detected Location:</p>
+                <p class="text-xs text-blue-800 font-semibold mt-0.5" id="gps-address-text">Detecting street/area address...</p>
+                <p class="text-[11px] text-slate-500 mt-0.5" id="gps-coord-text">Waiting for GPS...</p>
+              </div>
             </div>
+            <button onclick="fetchLiveGPS()" class="shrink-0 text-xs bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg font-bold hover:bg-slate-100">
+              Refresh
+            </button>
           </div>
 
-          <!-- Live Front Camera Box -->
+          <!-- POINT 3: iOS Safari WebKit Compatible Video Element -->
           <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border-2 border-slate-200">
-            <video id="camera-stream" autoplay playsinline class="w-full h-full object-cover hidden"></video>
+            <video id="camera-stream" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover hidden"></video>
             <canvas id="camera-canvas" class="hidden"></canvas>
             <img id="captured-photo" class="w-full h-full object-cover hidden" alt="Captured selfie" />
 
             <div id="camera-placeholder" class="text-center p-6 text-slate-400">
-              <i data-lucide="camera" class="w-12 h-12 mx-auto mb-2 opacity-60"></i>
-              <p class="text-xs">Allow Front Camera to Take Geo-Tagged Attendance Photo</p>
-              <button onclick="startCamera()" class="mt-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl">
+              <i data-lucide="camera" class="w-10 h-10 mx-auto mb-2 opacity-60"></i>
+              <p class="text-xs">Allow Front Camera for Geo-Tagged Attendance</p>
+              <button onclick="startCamera()" class="mt-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-xl">
                 Open Camera
               </button>
             </div>
 
-            <div id="camera-overlay-stamp" class="hidden absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-sm text-white p-2.5 rounded-xl text-[11px] font-mono leading-snug">
+            <div id="camera-overlay-stamp" class="hidden absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-sm text-white p-2 rounded-xl text-[10px] font-mono leading-snug">
               <div id="stamp-name" class="font-bold text-amber-300"></div>
               <div id="stamp-address" class="text-emerald-300 truncate"></div>
               <div id="stamp-coords"></div>
@@ -171,9 +177,9 @@
           </div>
 
           <!-- POINT 7: CAMERA PREVIEW & RETAKE CONTROLS -->
-          <div class="mt-5">
+          <div class="mt-4">
             <button id="btn-take-preview" onclick="capturePreviewPhoto()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm">
-              <i data-lucide="camera" class="w-5 h-5"></i>
+              <i data-lucide="camera" class="w-4 h-4"></i>
               <span>Click Photo Preview</span>
             </button>
 
@@ -182,14 +188,14 @@
                 <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                 <span>Retake Photo</span>
               </button>
-              <button onclick="confirmAndSubmitAttendance()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 text-xs">
+              <button id="btn-final-submit" onclick="confirmAndSubmitAttendance()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 text-xs">
                 <i data-lucide="check-circle-2" class="w-4 h-4"></i>
                 <span>Confirm & Submit</span>
               </button>
             </div>
           </div>
 
-          <div id="emp-result-msg" class="hidden mt-4 p-4 rounded-xl text-xs font-bold"></div>
+          <div id="emp-result-msg" class="hidden mt-4 p-3.5 rounded-xl text-xs font-bold"></div>
         </div>
       </div>
     </section>
@@ -197,147 +203,150 @@
     <!-- ========================================== -->
     <!-- 3. ADMIN & COORDINATOR PORTAL              -->
     <!-- ========================================== -->
-    <section id="dashboard-screen" class="hidden space-y-6">
+    <section id="dashboard-screen" class="hidden space-y-5">
 
-      <!-- TOP HEADER BAR WITH AREA FILTER, HISTORICAL CALENDAR [PT 6] & EXCEL EXPORT [PT 9] -->
+      <!-- POINT 1: ADMIN PENDING PASSWORD RESET REQUESTS PANEL -->
+      <div id="admin-reset-requests-panel" class="hidden bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="bg-amber-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-lg">🔑 Action Required</span>
+            <h3 class="text-sm font-extrabold text-amber-950">Pending Password / PIN Reset Requests</h3>
+          </div>
+          <span class="text-xs font-semibold text-amber-800">Approve request so user can set a new PIN on Login Screen</span>
+        </div>
+        <div id="admin-reset-requests-list" class="grid grid-cols-1 md:grid-cols-2 gap-2.5"></div>
+      </div>
+
+      <!-- TOP BAR: AREA FILTER + CALENDAR [PT 6] + EXCEL EXPORT [PT 9] -->
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <span id="dash-role-tag" class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700">Master Admin Portal</span>
             <h2 class="text-xl font-extrabold text-slate-900 mt-1" id="dash-main-heading">All Projects & Areas Overview</h2>
-            <p class="text-xs text-slate-500" id="dash-sub-heading">Click any employee name to view their full profile & attendance history</p>
+            <p class="text-xs text-slate-500">Click any employee name to view their full profile & attendance history</p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <div id="area-filter-wrapper" class="flex items-center gap-2">
-              <label class="text-xs font-bold text-slate-500 uppercase">Project / Area:</label>
-              <select id="area-filter-select" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3.5 py-2.5">
+            <div id="area-filter-wrapper" class="flex items-center gap-1.5">
+              <label class="text-xs font-bold text-slate-500 uppercase">Area:</label>
+              <select id="area-filter-select" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2">
                 <option value="ALL">All Projects / Areas (Pan-India)</option>
               </select>
             </div>
 
-            <!-- POINT 9: EXCEL / CSV EXPORT BUTTON -->
-            <button onclick="exportFilteredToExcelCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5 transition">
+            <button onclick="exportFilteredToExcelCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center gap-1.5">
               <i data-lucide="download" class="w-4 h-4"></i> Export Excel (.CSV)
             </button>
 
-            <button onclick="loadAllData()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2.5 rounded-xl border border-blue-200 flex items-center gap-1">
+            <button onclick="loadAllData()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2 rounded-xl border border-blue-200 flex items-center gap-1">
               <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
             </button>
           </div>
         </div>
 
-        <!-- POINT 6: INTERACTIVE HISTORICAL CALENDAR FILTER -->
-        <div class="pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <!-- POINT 6: HISTORICAL CALENDAR FILTER -->
+        <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1">📅 Filter Period:</span>
-            <button onclick="setDatePreset('TODAY')" id="preset-TODAY" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-700 text-white">Today</button>
-            <button onclick="setDatePreset('YESTERDAY')" id="preset-YESTERDAY" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Yesterday</button>
-            <button onclick="setDatePreset('LAST7')" id="preset-LAST7" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Last 7 Days</button>
-            <button onclick="setDatePreset('THIS_MONTH')" id="preset-THIS_MONTH" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">This Month</button>
-            <button onclick="setDatePreset('LAST_MONTH')" id="preset-LAST_MONTH" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Previous Month</button>
+            <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1">📅 Period:</span>
+            <button onclick="setDatePreset('TODAY')" id="preset-TODAY" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-700 text-white">Today</button>
+            <button onclick="setDatePreset('YESTERDAY')" id="preset-YESTERDAY" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Yesterday</button>
+            <button onclick="setDatePreset('LAST7')" id="preset-LAST7" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Last 7 Days</button>
+            <button onclick="setDatePreset('THIS_MONTH')" id="preset-THIS_MONTH" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">This Month</button>
+            <button onclick="setDatePreset('LAST_MONTH')" id="preset-LAST_MONTH" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Previous Month</button>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 text-xs">
             <span class="font-bold text-slate-500">From:</span>
-            <input type="date" id="filter-date-start" onchange="onCustomDateChange()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-slate-800 bg-slate-50" />
+            <input type="date" id="filter-date-start" onchange="onCustomDateChange()" class="px-2 py-1 rounded-lg border border-slate-300 font-bold text-slate-800 bg-slate-50" />
             <span class="font-bold text-slate-500">To:</span>
-            <input type="date" id="filter-date-end" onchange="onCustomDateChange()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-slate-800 bg-slate-50" />
+            <input type="date" id="filter-date-end" onchange="onCustomDateChange()" class="px-2 py-1 rounded-lg border border-slate-300 font-bold text-slate-800 bg-slate-50" />
           </div>
         </div>
       </div>
 
-      <!-- 4 SUMMARY CARDS: TOTAL, PRESENT, ABSENT, LEAVE -->
+      <!-- 4 SUMMARY CARDS -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
           <div>
             <p class="text-xs font-bold uppercase text-slate-400">Total Employees</p>
-            <p id="stat-total" class="text-3xl font-black text-slate-800 mt-1">0</p>
+            <p id="stat-total" class="text-2xl font-black text-slate-800 mt-1">0</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center"><i data-lucide="users" class="w-6 h-6"></i></div>
+          <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center"><i data-lucide="users" class="w-5 h-5"></i></div>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-200 flex items-center justify-between">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-200 flex items-center justify-between">
           <div>
-            <p class="text-xs font-bold uppercase text-emerald-600">Present (In Filter)</p>
-            <p id="stat-present" class="text-3xl font-black text-emerald-600 mt-1">0</p>
+            <p class="text-xs font-bold uppercase text-emerald-600">Present</p>
+            <p id="stat-present" class="text-2xl font-black text-emerald-600 mt-1">0</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i data-lucide="user-check" class="w-6 h-6"></i></div>
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i data-lucide="user-check" class="w-5 h-5"></i></div>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-rose-200 flex items-center justify-between">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-rose-200 flex items-center justify-between">
           <div>
-            <p class="text-xs font-bold uppercase text-rose-600">Absent / Unmarked</p>
-            <p id="stat-absent" class="text-3xl font-black text-rose-600 mt-1">0</p>
+            <p class="text-xs font-bold uppercase text-rose-600">Absent</p>
+            <p id="stat-absent" class="text-2xl font-black text-rose-600 mt-1">0</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center"><i data-lucide="user-x" class="w-6 h-6"></i></div>
+          <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i data-lucide="user-x" class="w-5 h-5"></i></div>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-amber-200 flex items-center justify-between">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-amber-200 flex items-center justify-between">
           <div>
             <p class="text-xs font-bold uppercase text-amber-600">On Leave</p>
-            <p id="stat-leave" class="text-3xl font-black text-amber-600 mt-1">0</p>
+            <p id="stat-leave" class="text-2xl font-black text-amber-600 mt-1">0</p>
           </div>
-          <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center"><i data-lucide="calendar-off" class="w-6 h-6"></i></div>
+          <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i data-lucide="calendar-off" class="w-5 h-5"></i></div>
         </div>
       </div>
 
-      <!-- ADMIN ONLY: SUB-DIVIDED PROJECT / AREA CARDS WITH ASSIGNED COORDINATOR NAME -->
-      <div id="admin-area-subdivision-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-        <div class="mb-3">
-          <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-800">Project / Area Breakdown & Assigned Coordinators</h3>
-          <p class="text-xs text-slate-500">Click any project card below to filter the attendance & employee list for that specific area</p>
-        </div>
-        <div id="area-breakdown-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5"></div>
+      <!-- ADMIN AREA BREAKDOWN -->
+      <div id="admin-area-subdivision-section" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-800 mb-2.5">Project / Area Breakdown & Assigned Coordinators</h3>
+        <div id="area-breakdown-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </div>
 
-      <!-- NAVIGATION TABS -->
+      <!-- TABS -->
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="border-b border-slate-200 bg-slate-50 px-4 pt-3 flex flex-wrap gap-2">
-          <button onclick="switchDashTab('tab-attendance')" id="btn-tab-attendance" class="px-4 py-2.5 text-xs font-extrabold rounded-t-xl bg-white text-blue-700 border-t border-x border-slate-200">
+          <button onclick="switchDashTab('tab-attendance')" id="btn-tab-attendance" class="px-4 py-2 text-xs font-extrabold rounded-t-xl bg-white text-blue-700 border-t border-x border-slate-200">
             📋 Attendance & Recorded Google Locations
           </button>
-          <button onclick="switchDashTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2.5 text-xs font-extrabold rounded-t-xl text-slate-600 hover:text-slate-900">
+          <button onclick="switchDashTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2 text-xs font-extrabold rounded-t-xl text-slate-600 hover:text-slate-900">
             👥 Manage Employees (Add / Edit Profile / Outgoing)
           </button>
-          <button onclick="switchDashTab('tab-projects')" id="btn-tab-projects" class="hidden px-4 py-2.5 text-xs font-extrabold rounded-t-xl text-indigo-700 hover:text-indigo-900">
-            🏢 Create Project Area & Assign Coordinator (Admin Only)
+          <button onclick="switchDashTab('tab-projects')" id="btn-tab-projects" class="hidden px-4 py-2 text-xs font-extrabold rounded-t-xl text-indigo-700 hover:text-indigo-900">
+            🏢 Create Project Area & Assign Coordinator
           </button>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB 1: ATTENDANCE & RECORDED GOOGLE MAPS   -->
-        <!-- ========================================== -->
-        <div id="tab-attendance" class="p-4 sm:p-5 overflow-x-auto">
+        <!-- TAB 1: ATTENDANCE TABLE -->
+        <div id="tab-attendance" class="p-4 overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-400">
-                <th class="py-3 px-3">Date</th>
-                <th class="py-3 px-3">Employee (Click for Full Profile)</th>
-                <th class="py-3 px-3">Assigned Project Area</th>
-                <th class="py-3 px-3">Status</th>
-                <th class="py-3 px-3">Actual Recorded Location (Google Map Check)</th>
-                <th class="py-3 px-3">Photo Proof</th>
-                <th class="py-3 px-3 text-right">Backend Verification Action</th>
+                <th class="py-2.5 px-3">Date</th>
+                <th class="py-2.5 px-3">Employee (Click for Profile)</th>
+                <th class="py-2.5 px-3">Project Area</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3">Actual Recorded Location (Google Maps)</th>
+                <th class="py-2.5 px-3">Photo Proof</th>
+                <th class="py-2.5 px-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody id="attendance-table-body" class="divide-y divide-slate-100 text-xs"></tbody>
           </table>
         </div>
 
-        <!-- ========================================== -->
-        <!-- TAB 2: ADD / RENAME / OUTGOING EMPLOYEES   -->
-        <!-- ========================================== -->
-        <div id="tab-employees" class="hidden p-4 sm:p-5 space-y-6">
+        <!-- TAB 2: MANAGE EMPLOYEES -->
+        <div id="tab-employees" class="hidden p-4 space-y-5">
           <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-200">
-            <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-1">➕ Add Employee (or Edit Existing User's Profile)</h4>
-            <p class="text-[11px] text-slate-600 mb-3">Tip: Click <b>✏️ Edit</b> on any row below to load their details here, update their Name, PIN, Phone, PAN, or Area, and click Save!</p>
+            <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-2">➕ Add / Edit User Profile</h4>
             <form onsubmit="handleSaveUser(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
               <input type="text" id="new-emp-code" required placeholder="ID Code (e.g. EMP105)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold uppercase" />
-              <input type="text" id="new-emp-name" required placeholder="Full Name (e.g. Rajesh Kumar)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
+              <input type="text" id="new-emp-name" required placeholder="Full Name" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
               <input type="text" id="new-emp-pin" required placeholder="PIN (1234)" value="1234" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
-              <input type="text" id="new-emp-phone" placeholder="Mobile No (e.g. +91 9876543210)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
-              <input type="text" id="new-emp-pan" placeholder="PAN Card (e.g. ABCDE1234F)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold uppercase" />
+              <input type="text" id="new-emp-phone" placeholder="Mobile No" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
+              <input type="text" id="new-emp-pan" placeholder="PAN Card" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold uppercase" />
               <select id="new-emp-zone" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"></select>
               <select id="new-emp-role" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
                 <option value="employee">Role: Employee</option>
@@ -358,10 +367,10 @@
                   <th class="py-2.5 px-3">PIN</th>
                   <th class="py-2.5 px-3">Full Name (Click for Profile)</th>
                   <th class="py-2.5 px-3">Role</th>
-                  <th class="py-2.5 px-3">Assigned Project / Area</th>
+                  <th class="py-2.5 px-3">Project Area</th>
                   <th class="py-2.5 px-3">Phone & PAN</th>
                   <th class="py-2.5 px-3">Status</th>
-                  <th class="py-2.5 px-3 text-right">Quick Edit / Outgoing / Delete</th>
+                  <th class="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody id="employee-list-body" class="divide-y divide-slate-100 text-xs"></tbody>
@@ -369,58 +378,60 @@
           </div>
         </div>
 
-        <!-- ======================================================= -->
-        <!-- TAB 3: ADMIN PROJECT AREA & COORDINATOR CREATOR         -->
-        <!-- ======================================================= -->
-        <div id="tab-projects" class="hidden p-4 sm:p-5 space-y-6">
-          <div class="bg-indigo-50/70 p-5 rounded-2xl border border-indigo-200 space-y-4">
-            <div>
-              <h4 class="text-sm font-extrabold uppercase text-indigo-950">🏢 Create New Project / Area & Assign Coordinator</h4>
-              <p class="text-xs text-indigo-800 mt-0.5">Create a new city/site project (e.g., Bareilly XYZ Site, Moradabad Division, Noida Sector 62) and optionally assign its Coordinator in one step.</p>
-            </div>
-
-            <form onsubmit="handleCreateProjectAndCoordinator(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div class="bg-white p-3 rounded-xl border border-indigo-100">
-                <label class="block text-[10px] font-extrabold uppercase text-indigo-600 mb-1">1. Project / Area Name *</label>
-                <input type="text" id="proj-area-name" required placeholder="e.g. Bareilly Site-A" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold" />
-              </div>
-
-              <div class="bg-white p-3 rounded-xl border border-indigo-100">
-                <label class="block text-[10px] font-extrabold uppercase text-emerald-700 mb-1">2. Coordinator Login ID (Optional)</label>
-                <input type="text" id="proj-coord-code" placeholder="e.g. COORD05" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold uppercase" />
-              </div>
-
-              <div class="bg-white p-3 rounded-xl border border-indigo-100">
-                <label class="block text-[10px] font-extrabold uppercase text-emerald-700 mb-1">3. Coordinator Full Name</label>
-                <input type="text" id="proj-coord-name" placeholder="e.g. Manoj Tiwari" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
-              </div>
-
-              <div class="bg-white p-3 rounded-xl border border-indigo-100 flex flex-col justify-between">
-                <label class="block text-[10px] font-extrabold uppercase text-emerald-700 mb-1">4. Coordinator PIN & Save</label>
-                <div class="flex gap-2">
-                  <input type="text" id="proj-coord-pin" value="1234" placeholder="PIN" class="w-20 px-2.5 py-2 rounded-lg border border-slate-300 text-xs font-bold" />
-                  <button type="submit" class="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold py-2 px-3 rounded-lg shadow">
-                    + Create Project
-                  </button>
-                </div>
+        <!-- TAB 3: CREATE PROJECT & COORDINATOR -->
+        <div id="tab-projects" class="hidden p-4 space-y-5">
+          <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200">
+            <h4 class="text-xs font-extrabold uppercase text-indigo-950 mb-2.5">🏢 Create New Project / Area & Assign Coordinator</h4>
+            <form onsubmit="handleCreateProjectAndCoordinator(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+              <input type="text" id="proj-area-name" required placeholder="Project / Area Name *" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold" />
+              <input type="text" id="proj-coord-code" placeholder="Coordinator ID (e.g. COORD05)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold uppercase" />
+              <input type="text" id="proj-coord-name" placeholder="Coordinator Full Name" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
+              <div class="flex gap-2">
+                <input type="text" id="proj-coord-pin" value="1234" placeholder="PIN" class="w-20 px-2.5 py-2 rounded-lg border border-slate-300 text-xs font-bold" />
+                <button type="submit" class="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold py-2 px-3 rounded-lg shadow">+ Create</button>
               </div>
             </form>
           </div>
-
-          <!-- Hierarchy Overview Table (Project -> Coordinator -> Employees) -->
-          <div>
-            <h4 class="text-xs font-extrabold uppercase text-slate-700 mb-3">All Active Projects, Assigned Coordinators & Employee Count</h4>
-            <div id="projects-hierarchy-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-          </div>
+          <div id="projects-hierarchy-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5"></div>
         </div>
-
       </div>
     </section>
 
   </main>
 
   <!-- ================================================================= -->
-  <!-- POINT 5: DETAILED EMPLOYEE PROFILE & COMPLETE HISTORY MODAL        -->
+  <!-- POINT 1: FORGOT PASSWORD / ADMIN-APPROVED PIN RESET MODAL         -->
+  <!-- ================================================================= -->
+  <div id="password-reset-modal" onclick="closePasswordResetModal()" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-extrabold text-slate-900">🔑 Forgot Password / Reset PIN</h3>
+        <button onclick="closePasswordResetModal()" class="text-xs font-bold text-slate-400 hover:text-slate-700">✕ Close</button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Enter your <b>User ID / Code</b>. This sends a reset request to the Admin. Once the Admin approves your request, click <b>Check / Request</b> again to set your new PIN.
+      </p>
+      <div class="space-y-3">
+        <div class="flex gap-2">
+          <input type="text" id="reset-emp-code" placeholder="Enter ID (e.g. EMP101)" class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold uppercase" />
+          <button type="button" onclick="checkOrRequestPinReset()" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow">
+            Check / Request
+          </button>
+        </div>
+        <div id="reset-status-box" class="hidden p-3.5 rounded-xl text-xs font-semibold"></div>
+        <div id="reset-new-pin-section" class="hidden pt-2 border-t border-slate-200 space-y-2.5">
+          <label class="block text-[11px] font-extrabold uppercase text-emerald-700">✔ Admin Approved! Set Your New PIN:</label>
+          <input type="password" id="reset-new-pin-input" placeholder="Enter new 4-6 digit PIN" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-emerald-400 text-xs font-bold" />
+          <button type="button" onclick="saveApprovedNewPin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs shadow">
+            Save New PIN & Return to Login
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- POINT 5: DETAILED EMPLOYEE PROFILE & COMPLETE HISTORY MODAL       -->
   <!-- ================================================================= -->
   <div id="employee-profile-modal" onclick="closeProfileModal()" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
@@ -431,53 +442,29 @@
         </div>
         <button onclick="closeProfileModal()" class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg">✕ Close</button>
       </div>
-
-      <div class="p-5 overflow-y-auto space-y-5">
+      <div class="p-5 overflow-y-auto space-y-4">
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
-          <div>
-            <p class="text-[10px] font-bold uppercase text-slate-400">Assigned Project Area</p>
-            <p id="prof-zone" class="font-extrabold text-slate-900 mt-0.5"></p>
-          </div>
-          <div>
-            <p class="text-[10px] font-bold uppercase text-slate-400">Contact Info</p>
-            <p id="prof-phone" class="font-extrabold text-slate-900 mt-0.5"></p>
-          </div>
-          <div>
-            <p class="text-[10px] font-bold uppercase text-slate-400">PAN Number</p>
-            <p id="prof-pan" class="font-extrabold text-slate-900 mt-0.5"></p>
-          </div>
-          <div>
-            <p class="text-[10px] font-bold uppercase text-slate-400">Govt ID Status</p>
-            <p class="font-extrabold text-slate-700 mt-0.5">[Aadhaar Redacted]</p>
-          </div>
+          <div><p class="text-[10px] font-bold uppercase text-slate-400">Assigned Area</p><p id="prof-zone" class="font-extrabold text-slate-900 mt-0.5"></p></div>
+          <div><p class="text-[10px] font-bold uppercase text-slate-400">Contact Info</p><p id="prof-phone" class="font-extrabold text-slate-900 mt-0.5"></p></div>
+          <div><p class="text-[10px] font-bold uppercase text-slate-400">PAN Number</p><p id="prof-pan" class="font-extrabold text-slate-900 mt-0.5"></p></div>
+          <div><p class="text-[10px] font-bold uppercase text-slate-400">Govt ID Status</p><p class="font-extrabold text-slate-700 mt-0.5">[Aadhaar Redacted]</p></div>
         </div>
-
         <div class="grid grid-cols-3 gap-3 text-center">
-          <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
-            <p class="text-[10px] font-bold uppercase text-emerald-700">Total Present Days</p>
-            <p id="prof-stat-p" class="text-xl font-black text-emerald-700">0</p>
-          </div>
-          <div class="bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
-            <p class="text-[10px] font-bold uppercase text-rose-700">Total Absent Days</p>
-            <p id="prof-stat-a" class="text-xl font-black text-rose-700">0</p>
-          </div>
-          <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
-            <p class="text-[10px] font-bold uppercase text-amber-700">Total Leave Days</p>
-            <p id="prof-stat-l" class="text-xl font-black text-amber-700">0</p>
-          </div>
+          <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl"><p class="text-[10px] font-bold uppercase text-emerald-700">Present Days</p><p id="prof-stat-p" class="text-xl font-black text-emerald-700">0</p></div>
+          <div class="bg-rose-50 border border-rose-200 p-2.5 rounded-xl"><p class="text-[10px] font-bold uppercase text-rose-700">Absent Days</p><p id="prof-stat-a" class="text-xl font-black text-rose-700">0</p></div>
+          <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl"><p class="text-[10px] font-bold uppercase text-amber-700">Leave Days</p><p id="prof-stat-l" class="text-xl font-black text-amber-700">0</p></div>
         </div>
-
         <div>
           <h4 class="text-xs font-extrabold uppercase text-slate-700 mb-2">Complete Historical Attendance Log</h4>
           <div class="border border-slate-200 rounded-xl overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
                 <tr class="bg-slate-100 border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-500">
-                  <th class="py-2.5 px-3">Date</th>
-                  <th class="py-2.5 px-3">Punch Time</th>
-                  <th class="py-2.5 px-3">Status</th>
-                  <th class="py-2.5 px-3">Recorded Location</th>
-                  <th class="py-2.5 px-3">Photo Proof</th>
+                  <th class="py-2 px-3">Date</th>
+                  <th class="py-2 px-3">Punch Time</th>
+                  <th class="py-2 px-3">Status</th>
+                  <th class="py-2 px-3">Recorded Location</th>
+                  <th class="py-2 px-3">Photo Proof</th>
                 </tr>
               </thead>
               <tbody id="prof-history-tbody" class="divide-y divide-slate-100"></tbody>
@@ -488,15 +475,18 @@
     </div>
   </div>
 
-  <!-- PHOTO PREVIEW MODAL -->
+  <!-- PHOTO PREVIEW MODAL (WITH POINT 4 DIRECT IMAGE LINK) -->
   <div id="photo-modal" onclick="closePhotoModal()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
-      <img id="modal-img" class="w-full h-80 object-cover" alt="Employee Geo Selfie" />
+      <img id="modal-img" class="w-full h-80 object-cover bg-slate-900" alt="Employee Geo Selfie" />
       <div class="p-4 space-y-2">
         <p id="modal-caption" class="text-xs font-extrabold text-slate-900"></p>
         <p id="modal-address" class="text-xs text-blue-700 font-semibold"></p>
-        <div class="flex items-center justify-between pt-2">
-          <a id="modal-map-link" href="#" target="_blank" class="text-xs bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg">📍 Open Exact Spot in Google Maps</a>
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+          <div class="flex gap-1.5">
+            <a id="modal-map-link" href="#" target="_blank" class="text-xs bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg">📍 Google Maps</a>
+            <a id="modal-direct-img-link" href="#" target="_blank" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold px-3 py-1.5 rounded-lg">🔗 Open Full Image</a>
+          </div>
           <button onclick="closePhotoModal()" class="bg-slate-200 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg">Close</button>
         </div>
       </div>
@@ -504,12 +494,9 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- JAVASCRIPT LOGIC (WITH YOUR KEYS PRE-INSTALLED)                   -->
+  <!-- JAVASCRIPT LOGIC (ALL 9 POINTS ACTIVE + KEYS PRE-INSTALLED)       -->
   <!-- ================================================================= -->
   <script>
-    // ============================================================================
-    // YOUR SUPABASE KEYS ARE ALREADY INSTALLED BELOW:
-    // ============================================================================
     const SUPABASE_URL = "https://whsfpsrevtichsejdggw.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indoc2Zwc3JldnRpY2hzZWpkZ2d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNTI5OTksImV4cCI6MjEwODgyODk5OX0.iTjdf_0YFTdX38SZNoWBheANyx0sde1Z2xYJQayGGes";
 
@@ -537,13 +524,33 @@
     ];
 
     let attendanceData = [];
+    let passwordResetsData = [];
     let currentUser = null;
     let currentGPS = { lat: null, lng: null, address: "Fetching street address..." };
     let cameraStream = null;
     let pendingPhotoBase64 = null;
+    let pendingPhotoBlob = null;
+
+    // POINT 3: PWA Web Manifest Injection for iOS & Android Home Screen
+    function injectPWAManifest() {
+      const manifest = {
+        name: "GeoAttend Pro Attendance",
+        short_name: "GeoAttend",
+        start_url: window.location.href,
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#1e3a8a"
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    }
 
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
+      injectPWAManifest();
       document.getElementById('filter-date-start').value = todayStr;
       document.getElementById('filter-date-end').value = todayStr;
 
@@ -552,12 +559,28 @@
         if (localStorage.getItem('geo_users_v2')) usersData = JSON.parse(localStorage.getItem('geo_users_v2'));
         if (localStorage.getItem('geo_att_v2')) attendanceData = JSON.parse(localStorage.getItem('geo_att_v2'));
         if (localStorage.getItem('geo_zones_v2')) zonesData = JSON.parse(localStorage.getItem('geo_zones_v2'));
+        if (localStorage.getItem('geo_resets_v2')) passwordResetsData = JSON.parse(localStorage.getItem('geo_resets_v2'));
       } else {
         await loadAllData();
       }
     });
 
-    // POINT 2: PARALLEL SUPABASE FETCHING + STRICT COORDINATOR ISOLATION
+    // POINT 4: Resolve Storage Bucket Path, Public URL, or Base64 into Direct Accessible Image URL
+    function resolveAccessiblePhotoUrl(log) {
+      if (!log) return null;
+      const raw = log.photo_url || log.photo_base64;
+      if (!raw) return null;
+      if (raw.startsWith('data:image') || raw.startsWith('http://') || raw.startsWith('https://')) {
+        return raw;
+      }
+      if (isSupabaseConfigured) {
+        const { data } = supabaseClient.storage.from('attendance-selfies').getPublicUrl(raw);
+        return data?.publicUrl || raw;
+      }
+      return raw;
+    }
+
+    // POINT 2: Parallel Non-Blocking Queries + Coordinator Isolation
     async function loadAllData() {
       if (!isSupabaseConfigured) return;
 
@@ -568,19 +591,21 @@
           supabaseClient.from('app_users').select('*').eq('zone_name', myZone).eq('role', 'employee').order('id'),
           supabaseClient.from('attendance_logs').select('*').eq('zone_name', myZone).order('att_date', { ascending: false })
         ]);
-        if (zRes.data && zRes.data.length) zonesData = zRes.data;
+        if (zRes.data?.length) zonesData = zRes.data;
         if (uRes.data) usersData = [currentUser, ...uRes.data];
         if (aRes.data) attendanceData = aRes.data;
         renderDashboard();
       } else {
-        const [zRes, uRes, aRes] = await Promise.all([
+        const [zRes, uRes, aRes, rRes] = await Promise.all([
           supabaseClient.from('zones').select('*').order('id'),
           supabaseClient.from('app_users').select('*').order('id'),
-          supabaseClient.from('attendance_logs').select('*').order('att_date', { ascending: false })
+          supabaseClient.from('attendance_logs').select('*').order('att_date', { ascending: false }),
+          supabaseClient.from('password_resets').select('*').order('requested_at', { ascending: false })
         ]);
-        if (zRes.data && zRes.data.length) zonesData = zRes.data;
-        if (uRes.data && uRes.data.length) usersData = uRes.data;
+        if (zRes.data?.length) zonesData = zRes.data;
+        if (uRes.data?.length) usersData = uRes.data;
         if (aRes.data) attendanceData = aRes.data;
+        if (rRes.data) passwordResetsData = rRes.data;
         if (currentUser && currentUser.role === 'admin') {
           populateZoneDropdowns();
           renderDashboard();
@@ -593,9 +618,151 @@
         localStorage.setItem('geo_users_v2', JSON.stringify(usersData));
         localStorage.setItem('geo_att_v2', JSON.stringify(attendanceData));
         localStorage.setItem('geo_zones_v2', JSON.stringify(zonesData));
+        localStorage.setItem('geo_resets_v2', JSON.stringify(passwordResetsData));
       }
     }
 
+    // ============================================================================
+    // POINT 1: ADMIN-APPROVED PASSWORD / PIN RESET WORKFLOW
+    // ============================================================================
+    function openPasswordResetModal() {
+      const prefill = document.getElementById('login-emp-code').value.trim().toUpperCase();
+      document.getElementById('reset-emp-code').value = prefill;
+      document.getElementById('reset-status-box').classList.add('hidden');
+      document.getElementById('reset-new-pin-section').classList.add('hidden');
+      document.getElementById('password-reset-modal').classList.remove('hidden');
+    }
+
+    function closePasswordResetModal() {
+      document.getElementById('password-reset-modal').classList.add('hidden');
+    }
+
+    async function checkOrRequestPinReset() {
+      const code = document.getElementById('reset-emp-code').value.trim().toUpperCase();
+      if (!code) return alert("Please enter your User ID / Employee Code.");
+
+      if (isSupabaseConfigured) {
+        const { data: allU } = await supabaseClient.from('app_users').select('*');
+        if (allU?.length) usersData = allU;
+        const { data: allR } = await supabaseClient.from('password_resets').select('*');
+        if (allR) passwordResetsData = allR;
+      }
+
+      const user = usersData.find(u => u.emp_code.toUpperCase() === code);
+      const statusBox = document.getElementById('reset-status-box');
+      const newPinSec = document.getElementById('reset-new-pin-section');
+      statusBox.classList.remove('hidden');
+      newPinSec.classList.add('hidden');
+
+      if (!user) {
+        statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300";
+        statusBox.textContent = `User ID "${code}" not found. Please check with your Coordinator or Admin.`;
+        return;
+      }
+
+      const existingReq = passwordResetsData.find(r => r.emp_code.toUpperCase() === code);
+
+      if (existingReq && existingReq.status === 'approved') {
+        statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300";
+        statusBox.textContent = `✔ Admin has APPROVED your PIN reset request! Please enter your new PIN below.`;
+        newPinSec.classList.remove('hidden');
+        return;
+      }
+
+      if (existingReq && existingReq.status === 'pending') {
+        statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300";
+        statusBox.textContent = `⏳ Your reset request is currently PENDING Admin approval. Once Admin approves it, click "Check / Request" again to set your new PIN.`;
+        return;
+      }
+
+      const reqRecord = {
+        emp_code: user.emp_code,
+        full_name: user.full_name,
+        zone_name: user.zone_name,
+        status: 'pending',
+        requested_at: new Date().toISOString()
+      };
+
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('password_resets').upsert(reqRecord, { onConflict: 'emp_code' });
+      }
+      passwordResetsData = passwordResetsData.filter(r => r.emp_code !== user.emp_code);
+      passwordResetsData.unshift(reqRecord);
+      saveLocalFallback();
+
+      statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-900 border border-blue-300";
+      statusBox.textContent = `📩 Reset Request Sent to Admin! Ask Admin to click "Approve" on their dashboard, then click "Check / Request" here to set your new PIN.`;
+    }
+
+    async function saveApprovedNewPin() {
+      const code = document.getElementById('reset-emp-code').value.trim().toUpperCase();
+      const newPin = document.getElementById('reset-new-pin-input').value.trim();
+      if (!newPin || newPin.length < 4) return alert("Please enter a valid PIN (at least 4 digits/characters).");
+
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('app_users').update({ pin_code: newPin }).eq('emp_code', code);
+        await supabaseClient.from('password_resets').update({ status: 'completed' }).eq('emp_code', code);
+      }
+
+      const u = usersData.find(x => x.emp_code === code);
+      if (u) u.pin_code = newPin;
+      const r = passwordResetsData.find(x => x.emp_code === code);
+      if (r) r.status = 'completed';
+      saveLocalFallback();
+
+      alert(`✔ Your new PIN has been saved! You can now sign in.`);
+      document.getElementById('login-emp-code').value = code;
+      document.getElementById('login-pin').value = newPin;
+      closePasswordResetModal();
+    }
+
+    async function handleAdminResetDecision(empCode, decision) {
+      if (currentUser?.role !== 'admin') return;
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('password_resets').update({ status: decision }).eq('emp_code', empCode);
+      }
+      const req = passwordResetsData.find(r => r.emp_code === empCode);
+      if (req) req.status = decision;
+      saveLocalFallback();
+      renderAdminResetRequestsPanel();
+    }
+
+    function renderAdminResetRequestsPanel() {
+      const panel = document.getElementById('admin-reset-requests-panel');
+      const list = document.getElementById('admin-reset-requests-list');
+      if (!panel || currentUser?.role !== 'admin') {
+        if (panel) panel.classList.add('hidden');
+        return;
+      }
+
+      const pendingList = passwordResetsData.filter(r => r.status === 'pending');
+      if (!pendingList.length) {
+        panel.classList.add('hidden');
+        return;
+      }
+
+      panel.classList.remove('hidden');
+      list.innerHTML = pendingList.map(r => `
+        <div class="bg-white p-3 rounded-xl border border-amber-300 flex items-center justify-between gap-2">
+          <div>
+            <div class="font-extrabold text-xs text-slate-900">${r.full_name} (${r.emp_code})</div>
+            <div class="text-[11px] text-slate-500">Project Area: ${r.zone_name || 'N/A'}</div>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="handleAdminResetDecision('${r.emp_code}', 'approved')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">
+              ✔ Approve Reset
+            </button>
+            <button onclick="handleAdminResetDecision('${r.emp_code}', 'rejected')" class="bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold px-2.5 py-1.5 rounded-lg">
+              Reject
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ============================================================================
+    // LOGIN & SESSION MANAGEMENT
+    // ============================================================================
     function quickLogin(code) {
       document.getElementById('login-emp-code').value = code;
       document.getElementById('login-pin').value = '1234';
@@ -607,7 +774,7 @@
       currentUser = null;
       if (isSupabaseConfigured) {
         const { data: allU } = await supabaseClient.from('app_users').select('*');
-        if (allU && allU.length) usersData = allU;
+        if (allU?.length) usersData = allU;
       }
 
       const code = document.getElementById('login-emp-code').value.trim().toUpperCase();
@@ -615,7 +782,7 @@
 
       const user = usersData.find(u => u.emp_code.toUpperCase() === code && u.pin_code === pin);
       if (!user) {
-        alert('Invalid ID or PIN! Check your ID or try ADMIN01 / COORD01 / EMP101 with PIN 1234.');
+        alert('Invalid ID or PIN! If you forgot your PIN, click "Forgot Password / Reset PIN?"');
         return;
       }
       if (user.status !== 'active') {
@@ -630,17 +797,15 @@
       document.getElementById('user-session-bar').classList.remove('hidden');
       document.getElementById('logged-user-badge').textContent = `${user.full_name} (${user.role.toUpperCase()} - ${user.zone_name})`;
 
-      if (user.role === 'employee') {
-        openEmployeePortal();
-      } else {
-        openDashboardPortal();
-      }
+      if (user.role === 'employee') openEmployeePortal();
+      else openDashboardPortal();
     }
 
     function logout() {
       stopCamera();
       currentUser = null;
       pendingPhotoBase64 = null;
+      pendingPhotoBlob = null;
       document.getElementById('employee-screen').classList.add('hidden');
       document.getElementById('dashboard-screen').classList.add('hidden');
       document.getElementById('user-session-bar').classList.add('hidden');
@@ -648,7 +813,7 @@
     }
 
     // ============================================================================
-    // EMPLOYEE PORTAL: DAILY LOCKOUT (POINT 8) & CAMERA RETAKE (POINT 7)
+    // EMPLOYEE PORTAL: LOCKOUT (POINT 8), CAMERA RETAKE (POINT 7) & STORAGE (POINT 4)
     // ============================================================================
     function openEmployeePortal() {
       document.getElementById('employee-screen').classList.remove('hidden');
@@ -668,10 +833,11 @@
         captureWorkflow.classList.add('hidden');
         lockoutCard.classList.remove('hidden');
         document.getElementById('lockout-details').textContent =
-          `Status: ${existingToday.status} • Time: ${existingToday.att_time} • Recorded Location: ${existingToday.recorded_address || 'Captured'}`;
+          `Status: ${existingToday.status} • Time: ${existingToday.att_time} • Location: ${existingToday.recorded_address || 'Captured'}`;
         const lockImg = document.getElementById('lockout-photo');
-        if (existingToday.photo_base64) {
-          lockImg.src = existingToday.photo_base64;
+        const imgUrl = resolveAccessiblePhotoUrl(existingToday);
+        if (imgUrl) {
+          lockImg.src = imgUrl;
           lockImg.classList.remove('hidden');
         } else {
           lockImg.classList.add('hidden');
@@ -690,13 +856,10 @@
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
         const data = await res.json();
-        if (data && data.display_name) {
-          const parts = data.display_name.split(',').map(s => s.trim());
-          return parts.slice(0, 4).join(', ');
+        if (data?.display_name) {
+          return data.display_name.split(',').map(s => s.trim()).slice(0, 4).join(', ');
         }
-      } catch (e) {
-        console.warn("Reverse geocode fallback:", e);
-      }
+      } catch (e) {}
       return `Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}`;
     }
 
@@ -706,21 +869,17 @@
       addrText.textContent = "Fetching live location from GPS...";
 
       if (!navigator.geolocation) {
-        addrText.textContent = "GPS not supported on this browser";
+        addrText.textContent = "GPS not supported on this device";
         return;
       }
 
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          currentGPS.lat = lat;
-          currentGPS.lng = lng;
-          coordText.textContent = `GPS Coords: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-
-          const liveAddr = await fetchReadableAddress(lat, lng);
-          currentGPS.address = liveAddr;
-          addrText.textContent = `📍 ${liveAddr}`;
+          currentGPS.lat = pos.coords.latitude;
+          currentGPS.lng = pos.coords.longitude;
+          coordText.textContent = `GPS Coords: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`;
+          currentGPS.address = await fetchReadableAddress(currentGPS.lat, currentGPS.lng);
+          addrText.textContent = `📍 ${currentGPS.address}`;
           updateCameraStamp();
         },
         () => {
@@ -729,7 +888,7 @@
           coordText.textContent = `GPS Coords: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`;
           updateCameraStamp();
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
       );
     }
 
@@ -742,17 +901,26 @@
       document.getElementById('stamp-time').textContent = `Time: ${new Date().toLocaleString()}`;
     }
 
+    // POINT 3: iOS Safari + Android Compatible Camera Initialization
     async function startCamera() {
       try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 480, height: 360 }, audio: false });
+        stopCamera();
+        const constraints = {
+          audio: false,
+          video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } }
+        };
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
         const video = document.getElementById('camera-stream');
         video.srcObject = cameraStream;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        await video.play();
         video.classList.remove('hidden');
         document.getElementById('captured-photo').classList.add('hidden');
         document.getElementById('camera-placeholder').classList.add('hidden');
         updateCameraStamp();
       } catch (err) {
-        console.warn("Camera not available, using watermark stamp card.");
+        console.warn("Camera fallback active:", err);
       }
     }
 
@@ -763,12 +931,8 @@
       }
     }
 
-    // POINT 7: CAPTURE PREVIEW & ALLOW MULTIPLE RETAKES BEFORE FINAL SUBMISSION
     function capturePreviewPhoto() {
-      if (!currentGPS.lat) {
-        alert("Please wait a moment for your GPS location to lock.");
-        return;
-      }
+      if (!currentGPS.lat) return alert("Please wait a moment for your GPS location to lock.");
 
       const video = document.getElementById('camera-stream');
       const canvas = document.getElementById('camera-canvas');
@@ -796,8 +960,9 @@
       ctx.fillText(`GPS: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`, 10, canvas.height - 26);
       ctx.fillText(`Time: ${new Date().toLocaleString()}`, 10, canvas.height - 10);
 
-      // Point 2 Optimization: Compressed JPEG for fast mobile upload
       pendingPhotoBase64 = canvas.toDataURL('image/jpeg', 0.62);
+      canvas.toBlob(blob => { pendingPhotoBlob = blob; }, 'image/jpeg', 0.62);
+
       const previewImg = document.getElementById('captured-photo');
       previewImg.src = pendingPhotoBase64;
       previewImg.classList.remove('hidden');
@@ -809,6 +974,7 @@
 
     function retakePhoto() {
       pendingPhotoBase64 = null;
+      pendingPhotoBlob = null;
       document.getElementById('captured-photo').classList.add('hidden');
       const video = document.getElementById('camera-stream');
       if (cameraStream) video.classList.remove('hidden');
@@ -816,9 +982,27 @@
       document.getElementById('btn-take-preview').classList.remove('hidden');
     }
 
+    // POINT 4: Upload Photo to Supabase Storage & Save Direct Public URL in Database
     async function confirmAndSubmitAttendance() {
       if (!pendingPhotoBase64) return;
+      const submitBtn = document.getElementById('btn-final-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Uploading...";
+
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      let publicImageUrl = null;
+
+      if (isSupabaseConfigured && pendingPhotoBlob) {
+        const filePath = `${todayStr}/${currentUser.emp_code}_${Date.now()}.jpg`;
+        const { error: upErr } = await supabaseClient.storage
+          .from('attendance-selfies')
+          .upload(filePath, pendingPhotoBlob, { contentType: 'image/jpeg', upsert: true });
+
+        if (!upErr) {
+          const { data: pubData } = supabaseClient.storage.from('attendance-selfies').getPublicUrl(filePath);
+          publicImageUrl = pubData?.publicUrl || null;
+        }
+      }
 
       const record = {
         emp_code: currentUser.emp_code,
@@ -830,26 +1014,30 @@
         lat: currentGPS.lat,
         lng: currentGPS.lng,
         recorded_address: currentGPS.address,
-        photo_base64: pendingPhotoBase64,
+        photo_url: publicImageUrl || pendingPhotoBase64,
+        photo_base64: publicImageUrl || pendingPhotoBase64,
         marked_by: 'Self (Geo-Photo)'
       };
 
       if (isSupabaseConfigured) {
         const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
         if (error) {
-          delete record.recorded_address;
+          delete record.photo_url;
           await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
         }
       }
+
       attendanceData = attendanceData.filter(a => !(a.emp_code === record.emp_code && a.att_date === todayStr));
       attendanceData.unshift(record);
       saveLocalFallback();
 
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Confirm & Submit";
       checkEmployeeDailyLockout();
     }
 
     // ============================================================================
-    // POINT 6: HISTORICAL CALENDAR FILTER PRESETS & CUSTOM RANGE
+    // POINT 6: HISTORICAL CALENDAR FILTER
     // ============================================================================
     function setDatePreset(preset) {
       const now = new Date();
@@ -874,12 +1062,10 @@
       document.getElementById('filter-date-end').value = filterEndDate;
 
       ['TODAY', 'YESTERDAY', 'LAST7', 'THIS_MONTH', 'LAST_MONTH'].forEach(p => {
-        const btn = document.getElementById(`preset-${p}`);
-        btn.className = p === preset
-          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-700 text-white'
-          : 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
+        document.getElementById(`preset-${p}`).className = p === preset
+          ? 'px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-700 text-white'
+          : 'px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
       });
-
       renderDashboard();
     }
 
@@ -888,13 +1074,13 @@
       filterEndDate = document.getElementById('filter-date-end').value || todayStr;
       if (filterStartDate > filterEndDate) filterEndDate = filterStartDate;
       ['TODAY', 'YESTERDAY', 'LAST7', 'THIS_MONTH', 'LAST_MONTH'].forEach(p => {
-        document.getElementById(`preset-${p}`).className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
+        document.getElementById(`preset-${p}`).className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
       });
       renderDashboard();
     }
 
     // ============================================================================
-    // ADMIN & COORDINATOR PORTAL RENDERING
+    // DASHBOARD RENDERING
     // ============================================================================
     function openDashboardPortal() {
       document.getElementById('dashboard-screen').classList.remove('hidden');
@@ -940,7 +1126,7 @@
     function populateZoneDropdowns() {
       const areaSelect = document.getElementById('area-filter-select');
       const newEmpZone = document.getElementById('new-emp-zone');
-      if (currentUser && currentUser.role === 'coordinator') return;
+      if (currentUser?.role === 'coordinator') return;
 
       const prevSelected = areaSelect.value || 'ALL';
       areaSelect.innerHTML = `<option value="ALL">All Projects / Areas (Pan-India)</option>`;
@@ -949,10 +1135,7 @@
         areaSelect.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
         newEmpZone.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
       });
-
-      if ([...areaSelect.options].some(o => o.value === prevSelected)) {
-        areaSelect.value = prevSelected;
-      }
+      if ([...areaSelect.options].some(o => o.value === prevSelected)) areaSelect.value = prevSelected;
     }
 
     function getFilteredAttendanceRows() {
@@ -981,7 +1164,7 @@
             lat: log ? log.lat : null,
             lng: log ? log.lng : null,
             recorded_address: log ? (log.recorded_address || 'Location Captured') : 'Not Marked Yet',
-            photo_base64: log ? log.photo_base64 : null,
+            photo_resolved: resolveAccessiblePhotoUrl(log),
             marked_by: log ? log.marked_by : '-'
           });
         });
@@ -1002,7 +1185,7 @@
             lat: log.lat,
             lng: log.lng,
             recorded_address: log.recorded_address || 'Location Captured',
-            photo_base64: log.photo_base64,
+            photo_resolved: resolveAccessiblePhotoUrl(log),
             marked_by: log.marked_by || 'Self'
           });
         });
@@ -1012,6 +1195,7 @@
     }
 
     function renderDashboard() {
+      renderAdminResetRequestsPanel();
       const { rows, filteredEmployees, activeEmployees, selectedArea } = getFilteredAttendanceRows();
 
       let presentCount = 0, leaveCount = 0, absentCount = 0;
@@ -1041,37 +1225,36 @@
           recordedLocationHTML = `<span class="font-semibold text-slate-600">${r.att_time} (Marked by ${r.marked_by})</span>`;
         }
 
-        const photoCell = r.photo_base64
-          ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg font-bold text-[11px]">📸 View Photo</button>`
+        const photoCell = r.photo_resolved
+          ? `<div class="flex items-center gap-1.5">
+               <button onclick="viewPhoto('${r.emp_code}', '${r.att_date}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg font-bold text-[11px]">📸 Preview</button>
+               <a href="${r.photo_resolved}" target="_blank" class="text-[11px] text-indigo-600 font-bold hover:underline">🔗 Open</a>
+             </div>`
           : `<span class="text-slate-400">No Photo</span>`;
 
         rowsHTML += `
           <tr class="hover:bg-slate-50">
-            <td class="py-3 px-3 font-mono font-bold text-slate-600">${r.att_date}</td>
-            <td class="py-3 px-3">
+            <td class="py-2.5 px-3 font-mono font-bold text-slate-600">${r.att_date}</td>
+            <td class="py-2.5 px-3">
               <button onclick="openEmployeeProfileModal('${r.emp_code}')" class="text-left group">
                 <div class="font-extrabold text-blue-700 group-hover:underline">${r.full_name} ↗</div>
                 <div class="text-[11px] text-slate-400">${r.emp_code}</div>
               </button>
             </td>
-            <td class="py-3 px-3">
-              <span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">${r.zone_name}</span>
-            </td>
-            <td class="py-3 px-3">
-              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">${r.status}</span>
-            </td>
-            <td class="py-3 px-3 max-w-xs">${recordedLocationHTML}</td>
-            <td class="py-3 px-3">${photoCell}</td>
-            <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
+            <td class="py-2.5 px-3"><span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">${r.zone_name}</span></td>
+            <td class="py-2.5 px-3"><span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">${r.status}</span></td>
+            <td class="py-2.5 px-3 max-w-xs">${recordedLocationHTML}</td>
+            <td class="py-2.5 px-3">${photoCell}</td>
+            <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded font-bold text-[11px]">Present</button>
               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Leave')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded font-bold text-[11px]">Leave</button>
-              <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded font-bold text-[11px]">Mark Absent</button>
+              <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded font-bold text-[11px]">Absent</button>
             </td>
           </tr>
         `;
       });
 
-      document.getElementById('attendance-table-body').innerHTML = rowsHTML || `<tr><td colspan="7" class="py-6 text-center text-slate-400 font-bold">No attendance records found for this date range.</td></tr>`;
+      document.getElementById('attendance-table-body').innerHTML = rowsHTML || `<tr><td colspan="7" class="py-6 text-center text-slate-400 font-bold">No records found for this date filter.</td></tr>`;
       document.getElementById('stat-total').textContent = filteredEmployees.length;
       document.getElementById('stat-present').textContent = presentCount;
       document.getElementById('stat-absent').textContent = absentCount;
@@ -1087,12 +1270,10 @@
     function renderAreaBreakdownCards(activeEmployees, selectedArea) {
       const grid = document.getElementById('area-breakdown-grid');
       if (!grid) return;
-      let html = '';
-
-      zonesData.forEach(z => {
+      grid.innerHTML = zonesData.map(z => {
         const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name);
         const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name && u.status === 'active');
-        const coordNames = coords.length ? coords.map(c => `${c.full_name} (${c.emp_code})`).join(', ') : 'No Coordinator Assigned';
+        const coordNames = coords.length ? coords.map(c => `${c.full_name} (${c.emp_code})`).join(', ') : 'No Coordinator';
 
         let p = 0, l = 0, a = 0;
         zoneEmps.forEach(emp => {
@@ -1105,24 +1286,23 @@
 
         const cardStyle = selectedArea === z.zone_name
           ? 'bg-blue-50/80 border-2 border-blue-600 shadow-sm'
-          : 'bg-slate-50 hover:bg-blue-50/70 border border-slate-200 hover:border-blue-400';
+          : 'bg-slate-50 hover:bg-blue-50/70 border border-slate-200';
 
-        html += `
+        return `
           <div onclick="filterByAreaCard('${z.zone_name}')" class="cursor-pointer ${cardStyle} rounded-xl p-3.5 transition">
             <div class="flex items-center justify-between">
               <span class="font-extrabold text-xs text-slate-900">${z.zone_name}</span>
               <span class="text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">Staff: ${zoneEmps.length}</span>
             </div>
             <p class="text-[11px] text-indigo-700 font-semibold mt-1 truncate">👤 Coord: ${coordNames}</p>
-            <div class="grid grid-cols-3 gap-1 text-center text-[11px] font-bold mt-2.5">
+            <div class="grid grid-cols-3 gap-1 text-center text-[11px] font-bold mt-2">
               <div class="bg-emerald-100 text-emerald-800 py-1 rounded">P: ${p}</div>
               <div class="bg-rose-100 text-rose-800 py-1 rounded">A: ${a}</div>
               <div class="bg-amber-100 text-amber-800 py-1 rounded">L: ${l}</div>
             </div>
           </div>
         `;
-      });
-      grid.innerHTML = html;
+      }).join('');
     }
 
     function filterByAreaCard(zoneName) {
@@ -1155,11 +1335,7 @@
       };
 
       if (isSupabaseConfigured) {
-        const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
-        if (error) {
-          delete record.recorded_address;
-          await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
-        }
+        await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
       }
       attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
       attendanceData.unshift(record);
@@ -1186,27 +1362,26 @@
         .sort((a, b) => b.att_date.localeCompare(a.att_date));
 
       let p = 0, a = 0, l = 0;
-      let historyRows = '';
-
-      empHistory.forEach(log => {
+      const historyRows = empHistory.map(log => {
         if (log.status === 'Present') p++;
         else if (log.status === 'Leave') l++;
         else a++;
 
-        const photoBtn = log.photo_base64
+        const imgUrl = resolveAccessiblePhotoUrl(log);
+        const photoBtn = imgUrl
           ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}')" class="text-blue-600 font-bold hover:underline">📸 View</button>`
           : `-`;
 
-        historyRows += `
+        return `
           <tr class="hover:bg-slate-50">
-            <td class="py-2.5 px-3 font-mono font-bold">${log.att_date}</td>
-            <td class="py-2.5 px-3">${log.att_time}</td>
-            <td class="py-2.5 px-3 font-bold">${log.status}</td>
-            <td class="py-2.5 px-3">${log.recorded_address || 'Captured'}</td>
-            <td class="py-2.5 px-3">${photoBtn}</td>
+            <td class="py-2 px-3 font-mono font-bold">${log.att_date}</td>
+            <td class="py-2 px-3">${log.att_time}</td>
+            <td class="py-2 px-3 font-bold">${log.status}</td>
+            <td class="py-2 px-3">${log.recorded_address || 'Captured'}</td>
+            <td class="py-2 px-3">${photoBtn}</td>
           </tr>
         `;
-      });
+      }).join('');
 
       document.getElementById('prof-stat-p').textContent = p;
       document.getElementById('prof-stat-a').textContent = a;
@@ -1220,17 +1395,18 @@
     }
 
     // ============================================================================
-    // POINT 9: EXCEL / CSV INSTANT DOWNLOAD OF FILTERED RECORDS
+    // POINT 9: EXCEL / CSV EXPORT
     // ============================================================================
     function exportFilteredToExcelCSV() {
       const { rows, selectedArea } = getFilteredAttendanceRows();
-      if (!rows.length) return alert("No records found to export for the selected filter.");
+      if (!rows.length) return alert("No records found to export.");
 
-      const headers = ["Date", "Employee ID", "Full Name", "Project Area", "Status", "Punch Time", "Live Street Address", "Latitude", "Longitude", "Google Maps Link"];
+      const headers = ["Date", "Employee ID", "Full Name", "Project Area", "Status", "Punch Time", "Live Street Address", "Latitude", "Longitude", "Google Maps Link", "Photo Direct Link"];
       const csvLines = [headers.join(",")];
 
       rows.forEach(r => {
         const mapLink = r.lat && r.lng ? `https://www.google.com/maps?q=${r.lat},${r.lng}` : "";
+        const directPhotoLink = r.photo_resolved && r.photo_resolved.startsWith('http') ? r.photo_resolved : "";
         csvLines.push([
           r.att_date,
           r.emp_code,
@@ -1241,7 +1417,8 @@
           `"${(r.recorded_address || '').replace(/"/g, '""')}"`,
           r.lat || "",
           r.lng || "",
-          `"${mapLink}"`
+          `"${mapLink}"`,
+          `"${directPhotoLink}"`
         ].join(","));
       });
 
@@ -1256,7 +1433,7 @@
     }
 
     // ============================================================================
-    // ADD / EDIT USER NAME / MANAGE EMPLOYEES
+    // EMPLOYEE & PROJECT MANAGEMENT
     // ============================================================================
     function renderEmployeeMaintenanceTable(selectedArea = 'ALL') {
       const tbody = document.getElementById('employee-list-body');
@@ -1264,13 +1441,12 @@
         ? usersData.filter(u => u.zone_name === currentUser.zone_name && u.role === 'employee')
         : (selectedArea === 'ALL' ? usersData : usersData.filter(u => u.zone_name === selectedArea));
 
-      let html = '';
-      visibleUsers.forEach(u => {
+      tbody.innerHTML = visibleUsers.map(u => {
         const statusBadge = u.status === 'active'
           ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[11px] font-bold">Active</span>`
           : `<span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[11px] font-bold">Outgoing</span>`;
 
-        html += `
+        return `
           <tr class="hover:bg-slate-50">
             <td class="py-2.5 px-3 font-extrabold text-slate-900">${u.emp_code}</td>
             <td class="py-2.5 px-3 font-mono text-slate-500">${u.pin_code}</td>
@@ -1282,20 +1458,13 @@
             <td class="py-2.5 px-3 text-[11px] text-slate-600">${u.phone || '-'} | PAN: ${u.pan_card || '-'}</td>
             <td class="py-2.5 px-3">${statusBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
-              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-[11px] font-bold">
-                ✏️ Edit
-              </button>
-              <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-[11px] font-bold">
-                ${u.status === 'active' ? 'Mark Outgoing' : 'Activate'}
-              </button>
-              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1 rounded text-[11px] font-bold">
-                Delete
-              </button>
+              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-[11px] font-bold">✏️ Edit</button>
+              <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-[11px] font-bold">${u.status === 'active' ? 'Mark Outgoing' : 'Activate'}</button>
+              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 px-2.5 py-1 rounded text-[11px] font-bold">Delete</button>
             </td>
           </tr>
         `;
-      });
-      tbody.innerHTML = html;
+      }).join('');
     }
 
     function prefillEditUser(empCode) {
@@ -1327,7 +1496,6 @@
       if (isSupabaseConfigured) {
         const { error } = await supabaseClient.from('app_users').upsert(userObj, { onConflict: 'emp_code' });
         if (error) {
-          // Automatic fallback if phone/pan_card columns haven't been added in Supabase SQL yet
           const basicObj = { emp_code: code, pin_code: pin, full_name: name, role, zone_name: zone, status: 'active' };
           await supabaseClient.from('app_users').upsert(basicObj, { onConflict: 'emp_code' });
         }
@@ -1338,11 +1506,6 @@
         else usersData.push(userObj);
         saveLocalFallback();
         renderDashboard();
-      }
-
-      if (currentUser && currentUser.emp_code === code) {
-        currentUser.full_name = name;
-        document.getElementById('logged-user-badge').textContent = `${name} (${currentUser.role.toUpperCase()} - ${currentUser.zone_name})`;
       }
 
       document.getElementById('new-emp-code').value = '';
@@ -1380,9 +1543,6 @@
       }
     }
 
-    // ============================================================================
-    // ADMIN: CREATE PROJECT AREA & ASSIGN COORDINATOR IN 1 STEP
-    // ============================================================================
     async function handleCreateProjectAndCoordinator(e) {
       e.preventDefault();
       if (currentUser.role !== 'admin') return;
@@ -1391,13 +1551,7 @@
       const coordName = document.getElementById('proj-coord-name').value.trim();
       const coordPin = document.getElementById('proj-coord-pin').value.trim() || '1234';
 
-      const newZone = {
-        zone_name: areaName,
-        center_lat: 28.5000,
-        center_lng: 79.0000,
-        radius_meters: 5000,
-        is_pan_india: true
-      };
+      const newZone = { zone_name: areaName, center_lat: 28.5000, center_lng: 79.0000, radius_meters: 5000, is_pan_india: true };
 
       if (isSupabaseConfigured) {
         await supabaseClient.from('zones').upsert(newZone, { onConflict: 'zone_name' });
@@ -1416,14 +1570,7 @@
         if (!zonesData.some(z => z.zone_name === areaName)) zonesData.push(newZone);
         if (coordCode && coordName) {
           usersData = usersData.filter(u => u.emp_code !== coordCode);
-          usersData.push({
-            emp_code: coordCode,
-            pin_code: coordPin,
-            full_name: coordName,
-            role: 'coordinator',
-            zone_name: areaName,
-            status: 'active'
-          });
+          usersData.push({ emp_code: coordCode, pin_code: coordPin, full_name: coordName, role: 'coordinator', zone_name: areaName, status: 'active' });
         }
         saveLocalFallback();
         populateZoneDropdowns();
@@ -1438,9 +1585,8 @@
     function renderProjectsHierarchy() {
       const grid = document.getElementById('projects-hierarchy-grid');
       if (!grid || currentUser.role !== 'admin') return;
-      let html = '';
 
-      zonesData.forEach(z => {
+      grid.innerHTML = zonesData.map(z => {
         const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name);
         const emps = usersData.filter(u => u.role === 'employee' && u.zone_name === z.zone_name && u.status === 'active');
 
@@ -1452,7 +1598,7 @@
           ? emps.map(e => `<span class="inline-block bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">${e.full_name} (${e.emp_code})</span>`).join(' ')
           : `<span class="text-xs text-slate-400">No employees added under this project yet</span>`;
 
-        html += `
+        return `
           <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
               <span class="font-extrabold text-sm text-slate-900">📍 ${z.zone_name}</span>
@@ -1468,8 +1614,7 @@
             </div>
           </div>
         `;
-      });
-      grid.innerHTML = html;
+      }).join('');
     }
 
     function switchDashTab(tabId) {
@@ -1481,11 +1626,13 @@
 
     function viewPhoto(empCode, targetDate = todayStr) {
       const log = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
-      if (!log || !log.photo_base64) return;
-      document.getElementById('modal-img').src = log.photo_base64;
+      const imgUrl = resolveAccessiblePhotoUrl(log);
+      if (!imgUrl) return;
+      document.getElementById('modal-img').src = imgUrl;
       document.getElementById('modal-caption').textContent = `${log.full_name} (${empCode}) — Assigned: ${log.zone_name} | ${log.att_date} ${log.att_time}`;
       document.getElementById('modal-address').textContent = `📍 Recorded Location: ${log.recorded_address || 'GPS Coords Captured'}`;
       document.getElementById('modal-map-link').href = `https://www.google.com/maps?q=${log.lat},${log.lng}`;
+      document.getElementById('modal-direct-img-link').href = imgUrl;
       document.getElementById('photo-modal').classList.remove('hidden');
     }
 
