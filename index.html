@@ -19,7 +19,7 @@
 <body class="min-h-screen text-slate-800 pb-14">
 
   <!-- TOP HEADER -->
-  <header class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-lg sticky top-0 z-50">
+  <header class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-lg sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
       <div class="flex items-center space-x-3">
         <div class="bg-blue-500/20 p-2 rounded-xl border border-blue-400/30">
@@ -47,7 +47,7 @@
         <i data-lucide="info" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
         <div class="text-xs text-amber-900">
           <p class="font-bold text-sm">Offline Demo Storage Active</p>
-          <p>Paste your <b>SUPABASE_URL</b> and <b>SUPABASE_ANON_KEY</b> at line 289 of <code>index.html</code> to sync across all phones.</p>
+          <p>Paste your <b>SUPABASE_URL</b> and <b>SUPABASE_ANON_KEY</b> in <code>index.html</code> to sync across all phones.</p>
         </div>
       </div>
     </div>
@@ -98,9 +98,9 @@
       </div>
     </section>
 
-    <!-- ========================================== -->
-    <!-- 2. EMPLOYEE PORTAL (MARK PRESENT + ADDRESS)-->
-    <!-- ========================================== -->
+    <!-- ========================================================== -->
+    <!-- 2. EMPLOYEE PORTAL (WITH LOCKOUT [PT 8] & RETAKE [PT 7])   -->
+    <!-- ========================================================== -->
     <section id="employee-screen" class="hidden max-w-lg mx-auto space-y-5">
       <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-5">
         <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
@@ -114,53 +114,83 @@
           </div>
         </div>
 
-        <!-- Live Google / Street Location Box -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4">
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex items-start gap-2.5">
-              <div class="p-2 bg-blue-100 text-blue-700 rounded-lg mt-0.5">
-                <i data-lucide="map-pin" class="w-5 h-5"></i>
+        <!-- POINT 8: DAILY DUPLICATE SUBMISSION LOCKOUT CARD -->
+        <div id="emp-lockout-card" class="hidden bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-5 text-center space-y-3">
+          <div class="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto shadow">
+            <i data-lucide="check-circle-2" class="w-7 h-7"></i>
+          </div>
+          <div>
+            <span class="bg-emerald-700 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider">Already Submitted Today</span>
+            <h4 class="text-base font-extrabold text-emerald-950 mt-2">Attendance Locked for Today</h4>
+            <p id="lockout-details" class="text-xs text-emerald-800 font-semibold mt-1"></p>
+          </div>
+          <img id="lockout-photo" class="w-56 h-40 object-cover rounded-xl mx-auto border border-emerald-300 shadow-sm hidden" alt="Submitted selfie" />
+        </div>
+
+        <!-- ACTIVE CAPTURE WORKFLOW (HIDDEN ONCE SUBMITTED TODAY) -->
+        <div id="emp-capture-workflow">
+          <!-- Live Google / Street Location Box -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-4">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-start gap-2.5">
+                <div class="p-2 bg-blue-100 text-blue-700 rounded-lg mt-0.5">
+                  <i data-lucide="map-pin" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-extrabold text-slate-800">Current Detected Location (Will Be Recorded):</p>
+                  <p class="text-xs text-blue-800 font-semibold mt-0.5" id="gps-address-text">Detecting live street/area address...</p>
+                  <p class="text-[11px] text-slate-500 mt-0.5" id="gps-coord-text">Waiting for GPS satellite...</p>
+                </div>
               </div>
-              <div>
-                <p class="text-xs font-extrabold text-slate-800">Current Detected Location (Will Be Recorded):</p>
-                <p class="text-xs text-blue-800 font-semibold mt-0.5" id="gps-address-text">Detecting live street/area address...</p>
-                <p class="text-[11px] text-slate-500 mt-0.5" id="gps-coord-text">Waiting for GPS satellite...</p>
-              </div>
+              <button onclick="fetchLiveGPS()" class="shrink-0 text-xs bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg font-bold hover:bg-slate-100">
+                Refresh
+              </button>
             </div>
-            <button onclick="fetchLiveGPS()" class="shrink-0 text-xs bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg font-bold hover:bg-slate-100">
-              Refresh
+          </div>
+
+          <!-- Live Front Camera Box -->
+          <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border-2 border-slate-200">
+            <video id="camera-stream" autoplay playsinline class="w-full h-full object-cover hidden"></video>
+            <canvas id="camera-canvas" class="hidden"></canvas>
+            <img id="captured-photo" class="w-full h-full object-cover hidden" alt="Captured selfie" />
+
+            <div id="camera-placeholder" class="text-center p-6 text-slate-400">
+              <i data-lucide="camera" class="w-12 h-12 mx-auto mb-2 opacity-60"></i>
+              <p class="text-xs">Allow Front Camera to Take Geo-Tagged Attendance Photo</p>
+              <button onclick="startCamera()" class="mt-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl">
+                Open Camera
+              </button>
+            </div>
+
+            <div id="camera-overlay-stamp" class="hidden absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-sm text-white p-2.5 rounded-xl text-[11px] font-mono leading-snug">
+              <div id="stamp-name" class="font-bold text-amber-300"></div>
+              <div id="stamp-address" class="text-emerald-300 truncate"></div>
+              <div id="stamp-coords"></div>
+              <div id="stamp-time"></div>
+            </div>
+          </div>
+
+          <!-- POINT 7: CAMERA PREVIEW & RETAKE CONTROLS -->
+          <div class="mt-5">
+            <button id="btn-take-preview" onclick="capturePreviewPhoto()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm">
+              <i data-lucide="camera" class="w-5 h-5"></i>
+              <span>Click Photo Preview</span>
             </button>
+
+            <div id="retake-confirm-bar" class="hidden grid grid-cols-2 gap-3">
+              <button onclick="retakePhoto()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-1.5 text-xs">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                <span>Retake Photo</span>
+              </button>
+              <button onclick="confirmAndSubmitAttendance()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 text-xs">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                <span>Confirm & Submit</span>
+              </button>
+            </div>
           </div>
+
+          <div id="emp-result-msg" class="hidden mt-4 p-4 rounded-xl text-xs font-bold"></div>
         </div>
-
-        <!-- Live Front Camera Box -->
-        <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border-2 border-slate-200">
-          <video id="camera-stream" autoplay playsinline class="w-full h-full object-cover hidden"></video>
-          <canvas id="camera-canvas" class="hidden"></canvas>
-          <img id="captured-photo" class="w-full h-full object-cover hidden" alt="Captured selfie" />
-
-          <div id="camera-placeholder" class="text-center p-6 text-slate-400">
-            <i data-lucide="camera" class="w-12 h-12 mx-auto mb-2 opacity-60"></i>
-            <p class="text-xs">Allow Front Camera to Take Geo-Tagged Attendance Photo</p>
-            <button onclick="startCamera()" class="mt-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl">
-              Open Camera
-            </button>
-          </div>
-
-          <div id="camera-overlay-stamp" class="hidden absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-sm text-white p-2.5 rounded-xl text-[11px] font-mono leading-snug">
-            <div id="stamp-name" class="font-bold text-amber-300"></div>
-            <div id="stamp-address" class="text-emerald-300 truncate"></div>
-            <div id="stamp-coords"></div>
-            <div id="stamp-time"></div>
-          </div>
-        </div>
-
-        <button onclick="captureAndMarkAttendance()" class="mt-5 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-          <i data-lucide="check-circle-2" class="w-5 h-5"></i>
-          <span>Click Photo & Submit Attendance (Mark Present)</span>
-        </button>
-
-        <div id="emp-result-msg" class="hidden mt-4 p-4 rounded-xl text-xs font-bold"></div>
       </div>
     </section>
 
@@ -169,22 +199,51 @@
     <!-- ========================================== -->
     <section id="dashboard-screen" class="hidden space-y-6">
 
-      <!-- TOP HEADER BAR WITH AREA FILTER & PROFILE NAME EDITOR -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <span id="dash-role-tag" class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700">Master Admin Portal</span>
-          <h2 class="text-xl font-extrabold text-slate-900 mt-1" id="dash-main-heading">All Projects & Areas Overview</h2>
-          <p class="text-xs text-slate-500" id="dash-sub-heading">Verify where employees marked attendance from using live address & Google Maps</p>
+      <!-- TOP HEADER BAR WITH AREA FILTER, HISTORICAL CALENDAR [PT 6] & EXCEL EXPORT [PT 9] -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <span id="dash-role-tag" class="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700">Master Admin Portal</span>
+            <h2 class="text-xl font-extrabold text-slate-900 mt-1" id="dash-main-heading">All Projects & Areas Overview</h2>
+            <p class="text-xs text-slate-500" id="dash-sub-heading">Click any employee name to view their full profile & attendance history</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <div id="area-filter-wrapper" class="flex items-center gap-2">
+              <label class="text-xs font-bold text-slate-500 uppercase">Project / Area:</label>
+              <select id="area-filter-select" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3.5 py-2.5">
+                <option value="ALL">All Projects / Areas (Pan-India)</option>
+              </select>
+            </div>
+
+            <!-- POINT 9: EXCEL / CSV EXPORT BUTTON -->
+            <button onclick="exportFilteredToExcelCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-sm flex items-center gap-1.5 transition">
+              <i data-lucide="download" class="w-4 h-4"></i> Export Excel (.CSV)
+            </button>
+
+            <button onclick="loadAllData()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2.5 rounded-xl border border-blue-200 flex items-center gap-1">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+            </button>
+          </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <label class="text-xs font-bold text-slate-500 uppercase">Project / Area:</label>
-          <select id="area-filter-select" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3.5 py-2.5">
-            <option value="ALL">All Projects / Areas (Pan-India)</option>
-          </select>
-          <button onclick="loadAllData()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2.5 rounded-xl border border-blue-200 flex items-center gap-1">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
-          </button>
+        <!-- POINT 6: INTERACTIVE HISTORICAL CALENDAR FILTER -->
+        <div class="pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1">📅 Filter Period:</span>
+            <button onclick="setDatePreset('TODAY')" id="preset-TODAY" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-700 text-white">Today</button>
+            <button onclick="setDatePreset('YESTERDAY')" id="preset-YESTERDAY" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Yesterday</button>
+            <button onclick="setDatePreset('LAST7')" id="preset-LAST7" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Last 7 Days</button>
+            <button onclick="setDatePreset('THIS_MONTH')" id="preset-THIS_MONTH" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">This Month</button>
+            <button onclick="setDatePreset('LAST_MONTH')" id="preset-LAST_MONTH" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Previous Month</button>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="font-bold text-slate-500">From:</span>
+            <input type="date" id="filter-date-start" onchange="onCustomDateChange()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-slate-800 bg-slate-50" />
+            <span class="font-bold text-slate-500">To:</span>
+            <input type="date" id="filter-date-end" onchange="onCustomDateChange()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-slate-800 bg-slate-50" />
+          </div>
         </div>
       </div>
 
@@ -200,7 +259,7 @@
 
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-200 flex items-center justify-between">
           <div>
-            <p class="text-xs font-bold uppercase text-emerald-600">Present Today</p>
+            <p class="text-xs font-bold uppercase text-emerald-600">Present (In Filter)</p>
             <p id="stat-present" class="text-3xl font-black text-emerald-600 mt-1">0</p>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i data-lucide="user-check" class="w-6 h-6"></i></div>
@@ -208,7 +267,7 @@
 
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-rose-200 flex items-center justify-between">
           <div>
-            <p class="text-xs font-bold uppercase text-rose-600">Absent (Not Marked)</p>
+            <p class="text-xs font-bold uppercase text-rose-600">Absent / Unmarked</p>
             <p id="stat-absent" class="text-3xl font-black text-rose-600 mt-1">0</p>
           </div>
           <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center"><i data-lucide="user-x" class="w-6 h-6"></i></div>
@@ -236,10 +295,10 @@
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="border-b border-slate-200 bg-slate-50 px-4 pt-3 flex flex-wrap gap-2">
           <button onclick="switchDashTab('tab-attendance')" id="btn-tab-attendance" class="px-4 py-2.5 text-xs font-extrabold rounded-t-xl bg-white text-blue-700 border-t border-x border-slate-200">
-            📋 Live Attendance & Recorded Google Locations
+            📋 Attendance & Recorded Google Locations
           </button>
           <button onclick="switchDashTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2.5 text-xs font-extrabold rounded-t-xl text-slate-600 hover:text-slate-900">
-            👥 Manage Employees (Add / Edit Name / Outgoing)
+            👥 Manage Employees (Add / Edit Profile / Outgoing)
           </button>
           <button onclick="switchDashTab('tab-projects')" id="btn-tab-projects" class="hidden px-4 py-2.5 text-xs font-extrabold rounded-t-xl text-indigo-700 hover:text-indigo-900">
             🏢 Create Project Area & Assign Coordinator (Admin Only)
@@ -253,7 +312,8 @@
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-400">
-                <th class="py-3 px-3">Employee</th>
+                <th class="py-3 px-3">Date</th>
+                <th class="py-3 px-3">Employee (Click for Full Profile)</th>
                 <th class="py-3 px-3">Assigned Project Area</th>
                 <th class="py-3 px-3">Status</th>
                 <th class="py-3 px-3">Actual Recorded Location (Google Map Check)</th>
@@ -270,12 +330,14 @@
         <!-- ========================================== -->
         <div id="tab-employees" class="hidden p-4 sm:p-5 space-y-6">
           <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-200">
-            <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-1">➕ Add Employee (or Edit Existing User's Name)</h4>
-            <p class="text-[11px] text-slate-600 mb-3">Tip: To change anyone's name (including Admin or Coordinator), type their existing Code (e.g. <b>ADMIN01</b> or <b>EMP101</b>), type the new Full Name, and click Save!</p>
-            <form onsubmit="handleSaveUser(event)" class="grid grid-cols-1 sm:grid-cols-6 gap-2.5">
+            <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-1">➕ Add Employee (or Edit Existing User's Profile)</h4>
+            <p class="text-[11px] text-slate-600 mb-3">Tip: Click <b>✏️ Edit</b> on any row below to load their details here, update their Name, PIN, Phone, PAN, or Area, and click Save!</p>
+            <form onsubmit="handleSaveUser(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
               <input type="text" id="new-emp-code" required placeholder="ID Code (e.g. EMP105)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold uppercase" />
               <input type="text" id="new-emp-name" required placeholder="Full Name (e.g. Rajesh Kumar)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
               <input type="text" id="new-emp-pin" required placeholder="PIN (1234)" value="1234" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
+              <input type="text" id="new-emp-phone" placeholder="Mobile No (e.g. +91 9876543210)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
+              <input type="text" id="new-emp-pan" placeholder="PAN Card (e.g. ABCDE1234F)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold uppercase" />
               <select id="new-emp-zone" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"></select>
               <select id="new-emp-role" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
                 <option value="employee">Role: Employee</option>
@@ -294,9 +356,10 @@
                 <tr class="border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-400">
                   <th class="py-2.5 px-3">Login ID</th>
                   <th class="py-2.5 px-3">PIN</th>
-                  <th class="py-2.5 px-3">Full Name</th>
+                  <th class="py-2.5 px-3">Full Name (Click for Profile)</th>
                   <th class="py-2.5 px-3">Role</th>
                   <th class="py-2.5 px-3">Assigned Project / Area</th>
+                  <th class="py-2.5 px-3">Phone & PAN</th>
                   <th class="py-2.5 px-3">Status</th>
                   <th class="py-2.5 px-3 text-right">Quick Edit / Outgoing / Delete</th>
                 </tr>
@@ -356,6 +419,75 @@
 
   </main>
 
+  <!-- ================================================================= -->
+  <!-- POINT 5: DETAILED EMPLOYEE PROFILE & COMPLETE HISTORY MODAL        -->
+  <!-- ================================================================= -->
+  <div id="employee-profile-modal" onclick="closeProfileModal()" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+      <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white px-5 py-4 flex items-center justify-between">
+        <div>
+          <span id="prof-role-badge" class="text-[10px] font-extrabold uppercase bg-blue-500/30 text-blue-200 px-2.5 py-0.5 rounded">EMPLOYEE PROFILE</span>
+          <h3 id="prof-full-name" class="text-lg font-extrabold mt-0.5">Employee Name</h3>
+        </div>
+        <button onclick="closeProfileModal()" class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg">✕ Close</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-5">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+          <div>
+            <p class="text-[10px] font-bold uppercase text-slate-400">Assigned Project Area</p>
+            <p id="prof-zone" class="font-extrabold text-slate-900 mt-0.5"></p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase text-slate-400">Contact Info</p>
+            <p id="prof-phone" class="font-extrabold text-slate-900 mt-0.5"></p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase text-slate-400">PAN Number</p>
+            <p id="prof-pan" class="font-extrabold text-slate-900 mt-0.5"></p>
+          </div>
+          <div>
+            <p class="text-[10px] font-bold uppercase text-slate-400">Govt ID Status</p>
+            <p class="font-extrabold text-slate-700 mt-0.5">[Aadhaar Redacted]</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+            <p class="text-[10px] font-bold uppercase text-emerald-700">Total Present Days</p>
+            <p id="prof-stat-p" class="text-xl font-black text-emerald-700">0</p>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+            <p class="text-[10px] font-bold uppercase text-rose-700">Total Absent Days</p>
+            <p id="prof-stat-a" class="text-xl font-black text-rose-700">0</p>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
+            <p class="text-[10px] font-bold uppercase text-amber-700">Total Leave Days</p>
+            <p id="prof-stat-l" class="text-xl font-black text-amber-700">0</p>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-extrabold uppercase text-slate-700 mb-2">Complete Historical Attendance Log</h4>
+          <div class="border border-slate-200 rounded-xl overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-500">
+                  <th class="py-2.5 px-3">Date</th>
+                  <th class="py-2.5 px-3">Punch Time</th>
+                  <th class="py-2.5 px-3">Status</th>
+                  <th class="py-2.5 px-3">Recorded Location</th>
+                  <th class="py-2.5 px-3">Photo Proof</th>
+                </tr>
+              </thead>
+              <tbody id="prof-history-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- PHOTO PREVIEW MODAL -->
   <div id="photo-modal" onclick="closePhotoModal()" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
@@ -372,17 +504,21 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- JAVASCRIPT LOGIC                                                  -->
+  <!-- JAVASCRIPT LOGIC (WITH YOUR KEYS PRE-INSTALLED)                   -->
   <!-- ================================================================= -->
   <script>
     // ============================================================================
-    // PASTE YOUR SUPABASE KEYS HERE:
+    // YOUR SUPABASE KEYS ARE ALREADY INSTALLED BELOW:
     // ============================================================================
     const SUPABASE_URL = "https://whsfpsrevtichsejdggw.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indoc2Zwc3JldnRpY2hzZWpkZ2d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNTI5OTksImV4cCI6MjEwODgyODk5OX0.iTjdf_0YFTdX38SZNoWBheANyx0sde1Z2xYJQayGGes";
 
     const isSupabaseConfigured = SUPABASE_URL.startsWith("https://") && SUPABASE_ANON_KEY.length > 20;
     const supabaseClient = isSupabaseConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    let filterStartDate = todayStr;
+    let filterEndDate = todayStr;
 
     let zonesData = [
       { zone_name: 'Bareilly', center_lat: 28.3670, center_lng: 79.4304, radius_meters: 1500, is_pan_india: false },
@@ -392,22 +528,25 @@
     ];
 
     let usersData = [
-      { emp_code: 'ADMIN01', pin_code: '1234', full_name: 'Master Admin', role: 'admin', zone_name: 'Pan-India (Remote)', status: 'active' },
-      { emp_code: 'COORD01', pin_code: '1234', full_name: 'Bareilly Coordinator', role: 'coordinator', zone_name: 'Bareilly', status: 'active' },
-      { emp_code: 'COORD02', pin_code: '1234', full_name: 'Moradabad Coordinator', role: 'coordinator', zone_name: 'Moradabad', status: 'active' },
-      { emp_code: 'EMP101', pin_code: '1234', full_name: 'Rahul Sharma', role: 'employee', zone_name: 'Bareilly', status: 'active' },
-      { emp_code: 'EMP102', pin_code: '1234', full_name: 'Amit Verma', role: 'employee', zone_name: 'Moradabad', status: 'active' },
-      { emp_code: 'EMP103', pin_code: '1234', full_name: 'Priya Singh', role: 'employee', zone_name: 'Pan-India (Remote)', status: 'active' }
+      { emp_code: 'ADMIN01', pin_code: '1234', full_name: 'Master Admin', role: 'admin', zone_name: 'Pan-India (Remote)', status: 'active', phone: '+91 9810000001', pan_card: 'ADMPA1234A' },
+      { emp_code: 'COORD01', pin_code: '1234', full_name: 'Bareilly Coordinator', role: 'coordinator', zone_name: 'Bareilly', status: 'active', phone: '+91 9810000002', pan_card: 'CRDPA1234B' },
+      { emp_code: 'COORD02', pin_code: '1234', full_name: 'Moradabad Coordinator', role: 'coordinator', zone_name: 'Moradabad', status: 'active', phone: '+91 9810000003', pan_card: 'CRDPA1234C' },
+      { emp_code: 'EMP101', pin_code: '1234', full_name: 'Rahul Sharma', role: 'employee', zone_name: 'Bareilly', status: 'active', phone: '+91 9810000101', pan_card: 'EMPPA1010D' },
+      { emp_code: 'EMP102', pin_code: '1234', full_name: 'Amit Verma', role: 'employee', zone_name: 'Moradabad', status: 'active', phone: '+91 9810000102', pan_card: 'EMPPA1020E' },
+      { emp_code: 'EMP103', pin_code: '1234', full_name: 'Priya Singh', role: 'employee', zone_name: 'Pan-India (Remote)', status: 'active', phone: '+91 9810000103', pan_card: 'EMPPA1030F' }
     ];
 
     let attendanceData = [];
     let currentUser = null;
     let currentGPS = { lat: null, lng: null, address: "Fetching street address..." };
     let cameraStream = null;
-    const todayStr = new Date().toISOString().split('T')[0];
+    let pendingPhotoBase64 = null;
 
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
+      document.getElementById('filter-date-start').value = todayStr;
+      document.getElementById('filter-date-end').value = todayStr;
+
       if (!isSupabaseConfigured) {
         document.getElementById('demo-mode-banner').classList.remove('hidden');
         if (localStorage.getItem('geo_users_v2')) usersData = JSON.parse(localStorage.getItem('geo_users_v2'));
@@ -418,15 +557,35 @@
       }
     });
 
+    // POINT 2: PARALLEL SUPABASE FETCHING + STRICT COORDINATOR ISOLATION
     async function loadAllData() {
       if (!isSupabaseConfigured) return;
-      const { data: z } = await supabaseClient.from('zones').select('*').order('id');
-      const { data: u } = await supabaseClient.from('app_users').select('*').order('id');
-      const { data: a } = await supabaseClient.from('attendance_logs').select('*').eq('att_date', todayStr);
-      if (z && z.length) zonesData = z;
-      if (u && u.length) usersData = u;
-      if (a) attendanceData = a;
-      if (currentUser && currentUser.role !== 'employee') renderDashboard();
+
+      if (currentUser && currentUser.role === 'coordinator') {
+        const myZone = currentUser.zone_name;
+        const [zRes, uRes, aRes] = await Promise.all([
+          supabaseClient.from('zones').select('*').eq('zone_name', myZone),
+          supabaseClient.from('app_users').select('*').eq('zone_name', myZone).eq('role', 'employee').order('id'),
+          supabaseClient.from('attendance_logs').select('*').eq('zone_name', myZone).order('att_date', { ascending: false })
+        ]);
+        if (zRes.data && zRes.data.length) zonesData = zRes.data;
+        if (uRes.data) usersData = [currentUser, ...uRes.data];
+        if (aRes.data) attendanceData = aRes.data;
+        renderDashboard();
+      } else {
+        const [zRes, uRes, aRes] = await Promise.all([
+          supabaseClient.from('zones').select('*').order('id'),
+          supabaseClient.from('app_users').select('*').order('id'),
+          supabaseClient.from('attendance_logs').select('*').order('att_date', { ascending: false })
+        ]);
+        if (zRes.data && zRes.data.length) zonesData = zRes.data;
+        if (uRes.data && uRes.data.length) usersData = uRes.data;
+        if (aRes.data) attendanceData = aRes.data;
+        if (currentUser && currentUser.role === 'admin') {
+          populateZoneDropdowns();
+          renderDashboard();
+        }
+      }
     }
 
     function saveLocalFallback() {
@@ -445,7 +604,12 @@
 
     async function handleLogin(e) {
       if (e.preventDefault) e.preventDefault();
-      await loadAllData();
+      currentUser = null;
+      if (isSupabaseConfigured) {
+        const { data: allU } = await supabaseClient.from('app_users').select('*');
+        if (allU && allU.length) usersData = allU;
+      }
+
       const code = document.getElementById('login-emp-code').value.trim().toUpperCase();
       const pin = document.getElementById('login-pin').value.trim();
 
@@ -460,6 +624,8 @@
       }
 
       currentUser = user;
+      await loadAllData();
+
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('user-session-bar').classList.remove('hidden');
       document.getElementById('logged-user-badge').textContent = `${user.full_name} (${user.role.toUpperCase()} - ${user.zone_name})`;
@@ -474,6 +640,7 @@
     function logout() {
       stopCamera();
       currentUser = null;
+      pendingPhotoBase64 = null;
       document.getElementById('employee-screen').classList.add('hidden');
       document.getElementById('dashboard-screen').classList.add('hidden');
       document.getElementById('user-session-bar').classList.add('hidden');
@@ -481,15 +648,42 @@
     }
 
     // ============================================================================
-    // EMPLOYEE CAMERA + LIVE REVERSE GEOCODING (CONVERTS GPS TO AREA/STREET NAME)
+    // EMPLOYEE PORTAL: DAILY LOCKOUT (POINT 8) & CAMERA RETAKE (POINT 7)
     // ============================================================================
     function openEmployeePortal() {
       document.getElementById('employee-screen').classList.remove('hidden');
       document.getElementById('emp-zone-title').textContent = currentUser.zone_name;
       document.getElementById('emp-today-date').textContent = todayStr;
       document.getElementById('emp-result-msg').classList.add('hidden');
-      fetchLiveGPS();
-      startCamera();
+      checkEmployeeDailyLockout();
+    }
+
+    function checkEmployeeDailyLockout() {
+      const existingToday = attendanceData.find(a => a.emp_code === currentUser.emp_code && a.att_date === todayStr);
+      const lockoutCard = document.getElementById('emp-lockout-card');
+      const captureWorkflow = document.getElementById('emp-capture-workflow');
+
+      if (existingToday) {
+        stopCamera();
+        captureWorkflow.classList.add('hidden');
+        lockoutCard.classList.remove('hidden');
+        document.getElementById('lockout-details').textContent =
+          `Status: ${existingToday.status} • Time: ${existingToday.att_time} • Recorded Location: ${existingToday.recorded_address || 'Captured'}`;
+        const lockImg = document.getElementById('lockout-photo');
+        if (existingToday.photo_base64) {
+          lockImg.src = existingToday.photo_base64;
+          lockImg.classList.remove('hidden');
+        } else {
+          lockImg.classList.add('hidden');
+        }
+      } else {
+        lockoutCard.classList.add('hidden');
+        captureWorkflow.classList.remove('hidden');
+        document.getElementById('btn-take-preview').classList.remove('hidden');
+        document.getElementById('retake-confirm-bar').classList.add('hidden');
+        fetchLiveGPS();
+        startCamera();
+      }
     }
 
     async function fetchReadableAddress(lat, lng) {
@@ -497,7 +691,6 @@
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
         const data = await res.json();
         if (data && data.display_name) {
-          // Keep the first 4 meaningful parts of the address (e.g. Locality, Suburb, City, State)
           const parts = data.display_name.split(',').map(s => s.trim());
           return parts.slice(0, 4).join(', ');
         }
@@ -531,7 +724,6 @@
           updateCameraStamp();
         },
         () => {
-          // Fallback if testing on desktop without GPS permission
           currentGPS = { lat: 28.3670, lng: 79.4304, address: `Simulated Location (${currentUser.zone_name})` };
           addrText.textContent = `📍 ${currentGPS.address}`;
           coordText.textContent = `GPS Coords: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`;
@@ -552,7 +744,7 @@
 
     async function startCamera() {
       try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 480, height: 360 }, audio: false });
         const video = document.getElementById('camera-stream');
         video.srcObject = cameraStream;
         video.classList.remove('hidden');
@@ -571,8 +763,8 @@
       }
     }
 
-    // ALWAYS MARKS PRESENT & RECORDS ACTUAL LIVE LOCATION FOR BACKEND VERIFICATION
-    async function captureAndMarkAttendance() {
+    // POINT 7: CAPTURE PREVIEW & ALLOW MULTIPLE RETAKES BEFORE FINAL SUBMISSION
+    function capturePreviewPhoto() {
       if (!currentGPS.lat) {
         alert("Please wait a moment for your GPS location to lock.");
         return;
@@ -580,8 +772,8 @@
 
       const video = document.getElementById('camera-stream');
       const canvas = document.getElementById('camera-canvas');
-      canvas.width = 500;
-      canvas.height = 375;
+      canvas.width = 480;
+      canvas.height = 360;
       const ctx = canvas.getContext('2d');
 
       if (cameraStream && !video.classList.contains('hidden')) {
@@ -591,26 +783,41 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Burn Name, Assigned Area, AND Actual Detected Street Address onto the Photo
       ctx.fillStyle = "rgba(0, 0, 0, 0.78)";
-      ctx.fillRect(0, canvas.height - 92, canvas.width, 92);
+      ctx.fillRect(0, canvas.height - 90, canvas.width, 90);
       ctx.fillStyle = "#fbbf24";
-      ctx.font = "bold 13px monospace";
-      ctx.fillText(`${currentUser.full_name} (${currentUser.emp_code}) | Assigned: ${currentUser.zone_name}`, 10, canvas.height - 68);
+      ctx.font = "bold 12px monospace";
+      ctx.fillText(`${currentUser.full_name} (${currentUser.emp_code}) | Assigned: ${currentUser.zone_name}`, 10, canvas.height - 66);
       ctx.fillStyle = "#6ee7b7";
       ctx.font = "bold 11px monospace";
-      ctx.fillText(`Loc: ${(currentGPS.address || '').substring(0, 58)}`, 10, canvas.height - 48);
+      ctx.fillText(`Loc: ${(currentGPS.address || '').substring(0, 56)}`, 10, canvas.height - 46);
       ctx.fillStyle = "#ffffff";
       ctx.font = "11px monospace";
-      ctx.fillText(`GPS: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`, 10, canvas.height - 28);
+      ctx.fillText(`GPS: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`, 10, canvas.height - 26);
       ctx.fillText(`Time: ${new Date().toLocaleString()}`, 10, canvas.height - 10);
 
-      const photoBase64 = canvas.toDataURL('image/jpeg', 0.72);
+      // Point 2 Optimization: Compressed JPEG for fast mobile upload
+      pendingPhotoBase64 = canvas.toDataURL('image/jpeg', 0.62);
       const previewImg = document.getElementById('captured-photo');
-      previewImg.src = photoBase64;
+      previewImg.src = pendingPhotoBase64;
       previewImg.classList.remove('hidden');
       video.classList.add('hidden');
 
+      document.getElementById('btn-take-preview').classList.add('hidden');
+      document.getElementById('retake-confirm-bar').classList.remove('hidden');
+    }
+
+    function retakePhoto() {
+      pendingPhotoBase64 = null;
+      document.getElementById('captured-photo').classList.add('hidden');
+      const video = document.getElementById('camera-stream');
+      if (cameraStream) video.classList.remove('hidden');
+      document.getElementById('retake-confirm-bar').classList.add('hidden');
+      document.getElementById('btn-take-preview').classList.remove('hidden');
+    }
+
+    async function confirmAndSubmitAttendance() {
+      if (!pendingPhotoBase64) return;
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       const record = {
@@ -623,27 +830,67 @@
         lat: currentGPS.lat,
         lng: currentGPS.lng,
         recorded_address: currentGPS.address,
-        photo_base64: photoBase64,
+        photo_base64: pendingPhotoBase64,
         marked_by: 'Self (Geo-Photo)'
       };
 
       if (isSupabaseConfigured) {
         const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
         if (error) {
-          // Fallback if recorded_address column wasn't added yet in SQL
           delete record.recorded_address;
           await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
         }
-      } else {
-        attendanceData = attendanceData.filter(a => !(a.emp_code === record.emp_code && a.att_date === todayStr));
-        attendanceData.push(record);
-        saveLocalFallback();
+      }
+      attendanceData = attendanceData.filter(a => !(a.emp_code === record.emp_code && a.att_date === todayStr));
+      attendanceData.unshift(record);
+      saveLocalFallback();
+
+      checkEmployeeDailyLockout();
+    }
+
+    // ============================================================================
+    // POINT 6: HISTORICAL CALENDAR FILTER PRESETS & CUSTOM RANGE
+    // ============================================================================
+    function setDatePreset(preset) {
+      const now = new Date();
+      let start = new Date();
+      let end = new Date();
+
+      if (preset === 'YESTERDAY') {
+        start.setDate(now.getDate() - 1);
+        end.setDate(now.getDate() - 1);
+      } else if (preset === 'LAST7') {
+        start.setDate(now.getDate() - 6);
+      } else if (preset === 'THIS_MONTH') {
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (preset === 'LAST_MONTH') {
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0);
       }
 
-      const msgBox = document.getElementById('emp-result-msg');
-      msgBox.classList.remove('hidden');
-      msgBox.className = "mt-4 p-4 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-950 border border-emerald-300";
-      msgBox.innerHTML = `✔ Attendance Marked as <b>PRESENT</b>!<br>Recorded Location: <b>${currentGPS.address}</b> (Sent to Coordinator & Admin for verification).`;
+      filterStartDate = start.toISOString().split('T')[0];
+      filterEndDate = end.toISOString().split('T')[0];
+      document.getElementById('filter-date-start').value = filterStartDate;
+      document.getElementById('filter-date-end').value = filterEndDate;
+
+      ['TODAY', 'YESTERDAY', 'LAST7', 'THIS_MONTH', 'LAST_MONTH'].forEach(p => {
+        const btn = document.getElementById(`preset-${p}`);
+        btn.className = p === preset
+          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-700 text-white'
+          : 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
+      });
+
+      renderDashboard();
+    }
+
+    function onCustomDateChange() {
+      filterStartDate = document.getElementById('filter-date-start').value || todayStr;
+      filterEndDate = document.getElementById('filter-date-end').value || todayStr;
+      if (filterStartDate > filterEndDate) filterEndDate = filterStartDate;
+      ['TODAY', 'YESTERDAY', 'LAST7', 'THIS_MONTH', 'LAST_MONTH'].forEach(p => {
+        document.getElementById(`preset-${p}`).className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
+      });
+      renderDashboard();
     }
 
     // ============================================================================
@@ -653,6 +900,7 @@
       document.getElementById('dashboard-screen').classList.remove('hidden');
       populateZoneDropdowns();
 
+      const areaWrapper = document.getElementById('area-filter-wrapper');
       const areaSelect = document.getElementById('area-filter-select');
       const newEmpZone = document.getElementById('new-emp-zone');
       const newEmpRole = document.getElementById('new-emp-role');
@@ -660,10 +908,11 @@
       if (currentUser.role === 'coordinator') {
         document.getElementById('dash-role-tag').textContent = `Coordinator Portal (${currentUser.zone_name})`;
         document.getElementById('dash-main-heading').textContent = `${currentUser.zone_name} — Project Attendance & Team`;
-        areaSelect.value = currentUser.zone_name;
-        areaSelect.disabled = true;
+        areaWrapper.classList.add('hidden');
+        newEmpZone.innerHTML = `<option value="${currentUser.zone_name}">${currentUser.zone_name}</option>`;
         newEmpZone.value = currentUser.zone_name;
         newEmpZone.disabled = true;
+        newEmpRole.innerHTML = `<option value="employee">Role: Employee</option>`;
         newEmpRole.value = 'employee';
         newEmpRole.disabled = true;
         document.getElementById('admin-area-subdivision-section').classList.add('hidden');
@@ -671,8 +920,14 @@
       } else {
         document.getElementById('dash-role-tag').textContent = `Master Admin Command Center`;
         document.getElementById('dash-main-heading').textContent = `All Projects, Coordinators & Employees`;
+        areaWrapper.classList.remove('hidden');
         areaSelect.disabled = false;
         newEmpZone.disabled = false;
+        newEmpRole.innerHTML = `
+          <option value="employee">Role: Employee</option>
+          <option value="coordinator">Role: Coordinator</option>
+          <option value="admin">Role: Admin</option>
+        `;
         newEmpRole.disabled = false;
         document.getElementById('admin-area-subdivision-section').classList.remove('hidden');
         document.getElementById('btn-tab-projects').classList.remove('hidden');
@@ -685,8 +940,9 @@
     function populateZoneDropdowns() {
       const areaSelect = document.getElementById('area-filter-select');
       const newEmpZone = document.getElementById('new-emp-zone');
-      const prevSelected = areaSelect.value || 'ALL';
+      if (currentUser && currentUser.role === 'coordinator') return;
 
+      const prevSelected = areaSelect.value || 'ALL';
       areaSelect.innerHTML = `<option value="ALL">All Projects / Areas (Pan-India)</option>`;
       newEmpZone.innerHTML = ``;
       zonesData.forEach(z => {
@@ -699,95 +955,139 @@
       }
     }
 
-    function renderDashboard() {
-      populateZoneDropdowns();
+    function getFilteredAttendanceRows() {
       const selectedArea = currentUser.role === 'coordinator'
         ? currentUser.zone_name
-        : document.getElementById('area-filter-select').value;
-
-      if (currentUser.role === 'coordinator') {
-        document.getElementById('area-filter-select').value = currentUser.zone_name;
-      }
+        : (document.getElementById('area-filter-select').value || 'ALL');
 
       const activeEmployees = usersData.filter(u => u.role === 'employee' && u.status === 'active');
       const filteredEmployees = selectedArea === 'ALL'
         ? activeEmployees
         : activeEmployees.filter(u => u.zone_name === selectedArea);
 
+      const isSingleDate = filterStartDate === filterEndDate;
+      const rows = [];
+
+      if (isSingleDate) {
+        filteredEmployees.forEach(emp => {
+          const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === filterStartDate);
+          rows.push({
+            att_date: filterStartDate,
+            emp_code: emp.emp_code,
+            full_name: emp.full_name,
+            zone_name: emp.zone_name,
+            status: log ? log.status : 'Absent',
+            att_time: log ? log.att_time : '-',
+            lat: log ? log.lat : null,
+            lng: log ? log.lng : null,
+            recorded_address: log ? (log.recorded_address || 'Location Captured') : 'Not Marked Yet',
+            photo_base64: log ? log.photo_base64 : null,
+            marked_by: log ? log.marked_by : '-'
+          });
+        });
+      } else {
+        const rangeLogs = attendanceData.filter(a =>
+          a.att_date >= filterStartDate &&
+          a.att_date <= filterEndDate &&
+          (selectedArea === 'ALL' || a.zone_name === selectedArea)
+        );
+        rangeLogs.forEach(log => {
+          rows.push({
+            att_date: log.att_date,
+            emp_code: log.emp_code,
+            full_name: log.full_name,
+            zone_name: log.zone_name,
+            status: log.status,
+            att_time: log.att_time || '-',
+            lat: log.lat,
+            lng: log.lng,
+            recorded_address: log.recorded_address || 'Location Captured',
+            photo_base64: log.photo_base64,
+            marked_by: log.marked_by || 'Self'
+          });
+        });
+      }
+
+      return { rows, filteredEmployees, activeEmployees, selectedArea };
+    }
+
+    function renderDashboard() {
+      const { rows, filteredEmployees, activeEmployees, selectedArea } = getFilteredAttendanceRows();
+
       let presentCount = 0, leaveCount = 0, absentCount = 0;
-      const tbody = document.getElementById('attendance-table-body');
-      tbody.innerHTML = '';
+      let rowsHTML = '';
 
-      filteredEmployees.forEach(emp => {
-        const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === todayStr);
-        const status = log ? log.status : 'Absent';
-
-        if (status === 'Present') presentCount++;
-        else if (status === 'Leave') leaveCount++;
+      rows.forEach(r => {
+        if (r.status === 'Present') presentCount++;
+        else if (r.status === 'Leave') leaveCount++;
         else absentCount++;
 
-        const badgeClass = status === 'Present'
+        const badgeClass = r.status === 'Present'
           ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-          : status === 'Leave'
+          : r.status === 'Leave'
           ? 'bg-amber-100 text-amber-800 border-amber-300'
           : 'bg-rose-100 text-rose-800 border-rose-300';
 
-        // Show exact recorded street address + 1-click Google Maps link
-        let recordedLocationHTML = `<span class="text-slate-400">Not Marked Yet</span>`;
-        if (log && log.lat && log.lng) {
-          const mapUrl = `https://www.google.com/maps?q=${log.lat},${log.lng}`;
-          const addrLabel = log.recorded_address || `${log.lat.toFixed(4)}, ${log.lng.toFixed(4)}`;
+        let recordedLocationHTML = `<span class="text-slate-400">${r.recorded_address}</span>`;
+        if (r.lat && r.lng) {
+          const mapUrl = `https://www.google.com/maps?q=${r.lat},${r.lng}`;
           recordedLocationHTML = `
-            <div class="font-bold text-slate-800">${log.att_time} — ${addrLabel}</div>
+            <div class="font-bold text-slate-800">${r.att_time} — ${r.recorded_address}</div>
             <a href="${mapUrl}" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-extrabold mt-0.5">
-              📍 Open in Google Maps (${log.lat.toFixed(4)}, ${log.lng.toFixed(4)}) ↗
+              📍 Open in Google Maps (${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}) ↗
             </a>
           `;
-        } else if (log) {
-          recordedLocationHTML = `<span class="font-semibold text-slate-600">${log.att_time} (Marked by ${log.marked_by})</span>`;
+        } else if (r.att_time !== '-') {
+          recordedLocationHTML = `<span class="font-semibold text-slate-600">${r.att_time} (Marked by ${r.marked_by})</span>`;
         }
 
-        const photoCell = log && log.photo_base64
-          ? `<button onclick="viewPhoto('${emp.emp_code}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg font-bold text-[11px]">📸 View Photo</button>`
+        const photoCell = r.photo_base64
+          ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg font-bold text-[11px]">📸 View Photo</button>`
           : `<span class="text-slate-400">No Photo</span>`;
 
-        tbody.innerHTML += `
+        rowsHTML += `
           <tr class="hover:bg-slate-50">
+            <td class="py-3 px-3 font-mono font-bold text-slate-600">${r.att_date}</td>
             <td class="py-3 px-3">
-              <div class="font-extrabold text-slate-900">${emp.full_name}</div>
-              <div class="text-[11px] text-slate-400">${emp.emp_code}</div>
+              <button onclick="openEmployeeProfileModal('${r.emp_code}')" class="text-left group">
+                <div class="font-extrabold text-blue-700 group-hover:underline">${r.full_name} ↗</div>
+                <div class="text-[11px] text-slate-400">${r.emp_code}</div>
+              </button>
             </td>
             <td class="py-3 px-3">
-              <span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">${emp.zone_name}</span>
+              <span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">${r.zone_name}</span>
             </td>
             <td class="py-3 px-3">
-              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">${status}</span>
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold border ${badgeClass}">${r.status}</span>
             </td>
             <td class="py-3 px-3 max-w-xs">${recordedLocationHTML}</td>
             <td class="py-3 px-3">${photoCell}</td>
             <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
-              <button onclick="manualOverrideStatus('${emp.emp_code}', 'Present')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded font-bold text-[11px]">Present</button>
-              <button onclick="manualOverrideStatus('${emp.emp_code}', 'Leave')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded font-bold text-[11px]">Leave</button>
-              <button onclick="manualOverrideStatus('${emp.emp_code}', 'Absent')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded font-bold text-[11px]">Mark Absent</button>
+              <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded font-bold text-[11px]">Present</button>
+              <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Leave')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded font-bold text-[11px]">Leave</button>
+              <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded font-bold text-[11px]">Mark Absent</button>
             </td>
           </tr>
         `;
       });
 
+      document.getElementById('attendance-table-body').innerHTML = rowsHTML || `<tr><td colspan="7" class="py-6 text-center text-slate-400 font-bold">No attendance records found for this date range.</td></tr>`;
       document.getElementById('stat-total').textContent = filteredEmployees.length;
       document.getElementById('stat-present').textContent = presentCount;
       document.getElementById('stat-absent').textContent = absentCount;
       document.getElementById('stat-leave').textContent = leaveCount;
 
-      renderAreaBreakdownCards(activeEmployees);
-      renderEmployeeMaintenanceTable();
-      renderProjectsHierarchy();
+      if (currentUser.role === 'admin') {
+        renderAreaBreakdownCards(activeEmployees, selectedArea);
+        renderProjectsHierarchy();
+      }
+      renderEmployeeMaintenanceTable(selectedArea);
     }
 
-    function renderAreaBreakdownCards(activeEmployees) {
+    function renderAreaBreakdownCards(activeEmployees, selectedArea) {
       const grid = document.getElementById('area-breakdown-grid');
       if (!grid) return;
-      grid.innerHTML = '';
+      let html = '';
 
       zonesData.forEach(z => {
         const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name);
@@ -796,15 +1096,19 @@
 
         let p = 0, l = 0, a = 0;
         zoneEmps.forEach(emp => {
-          const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === todayStr);
+          const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === filterStartDate);
           const st = log ? log.status : 'Absent';
           if (st === 'Present') p++;
           else if (st === 'Leave') l++;
           else a++;
         });
 
-        grid.innerHTML += `
-          <div onclick="filterByAreaCard('${z.zone_name}')" class="cursor-pointer bg-slate-50 hover:bg-blue-50/70 border border-slate-200 hover:border-blue-400 rounded-xl p-3.5 transition">
+        const cardStyle = selectedArea === z.zone_name
+          ? 'bg-blue-50/80 border-2 border-blue-600 shadow-sm'
+          : 'bg-slate-50 hover:bg-blue-50/70 border border-slate-200 hover:border-blue-400';
+
+        html += `
+          <div onclick="filterByAreaCard('${z.zone_name}')" class="cursor-pointer ${cardStyle} rounded-xl p-3.5 transition">
             <div class="flex items-center justify-between">
               <span class="font-extrabold text-xs text-slate-900">${z.zone_name}</span>
               <span class="text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">Staff: ${zoneEmps.length}</span>
@@ -818,25 +1122,29 @@
           </div>
         `;
       });
+      grid.innerHTML = html;
     }
 
     function filterByAreaCard(zoneName) {
+      if (currentUser.role !== 'admin') return;
       const sel = document.getElementById('area-filter-select');
       sel.value = sel.value === zoneName ? 'ALL' : zoneName;
       renderDashboard();
     }
 
-    async function manualOverrideStatus(empCode, newStatus) {
+    async function manualOverrideStatus(empCode, targetDate, newStatus) {
       const emp = usersData.find(u => u.emp_code === empCode);
       if (!emp) return;
-      const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === todayStr);
+      if (currentUser.role === 'coordinator' && emp.zone_name !== currentUser.zone_name) return;
+
+      const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       const record = {
         emp_code: emp.emp_code,
         full_name: emp.full_name,
         zone_name: emp.zone_name,
-        att_date: todayStr,
+        att_date: targetDate,
         att_time: existingLog ? existingLog.att_time : nowTime,
         status: newStatus,
         lat: existingLog ? existingLog.lat : null,
@@ -852,42 +1160,130 @@
           delete record.recorded_address;
           await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
         }
-        await loadAllData();
-      } else {
-        attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === todayStr));
-        attendanceData.push(record);
-        saveLocalFallback();
-        renderDashboard();
       }
+      attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
+      attendanceData.unshift(record);
+      saveLocalFallback();
+      renderDashboard();
+    }
+
+    // ============================================================================
+    // POINT 5: INDIVIDUAL EMPLOYEE PROFILE MODAL & HISTORICAL LOGS
+    // ============================================================================
+    function openEmployeeProfileModal(empCode) {
+      const emp = usersData.find(u => u.emp_code === empCode);
+      if (!emp) return;
+      if (currentUser.role === 'coordinator' && emp.zone_name !== currentUser.zone_name) return;
+
+      document.getElementById('prof-role-badge').textContent = `${emp.role.toUpperCase()} • ${emp.status.toUpperCase()}`;
+      document.getElementById('prof-full-name').textContent = `${emp.full_name} (${emp.emp_code})`;
+      document.getElementById('prof-zone').textContent = emp.zone_name;
+      document.getElementById('prof-phone').textContent = emp.phone || 'Not Added Yet';
+      document.getElementById('prof-pan').textContent = emp.pan_card || 'Not Added Yet';
+
+      const empHistory = attendanceData
+        .filter(a => a.emp_code === empCode)
+        .sort((a, b) => b.att_date.localeCompare(a.att_date));
+
+      let p = 0, a = 0, l = 0;
+      let historyRows = '';
+
+      empHistory.forEach(log => {
+        if (log.status === 'Present') p++;
+        else if (log.status === 'Leave') l++;
+        else a++;
+
+        const photoBtn = log.photo_base64
+          ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}')" class="text-blue-600 font-bold hover:underline">📸 View</button>`
+          : `-`;
+
+        historyRows += `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-3 font-mono font-bold">${log.att_date}</td>
+            <td class="py-2.5 px-3">${log.att_time}</td>
+            <td class="py-2.5 px-3 font-bold">${log.status}</td>
+            <td class="py-2.5 px-3">${log.recorded_address || 'Captured'}</td>
+            <td class="py-2.5 px-3">${photoBtn}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('prof-stat-p').textContent = p;
+      document.getElementById('prof-stat-a').textContent = a;
+      document.getElementById('prof-stat-l').textContent = l;
+      document.getElementById('prof-history-tbody').innerHTML = historyRows || `<tr><td colspan="5" class="py-5 text-center text-slate-400">No attendance history recorded yet.</td></tr>`;
+      document.getElementById('employee-profile-modal').classList.remove('hidden');
+    }
+
+    function closeProfileModal() {
+      document.getElementById('employee-profile-modal').classList.add('hidden');
+    }
+
+    // ============================================================================
+    // POINT 9: EXCEL / CSV INSTANT DOWNLOAD OF FILTERED RECORDS
+    // ============================================================================
+    function exportFilteredToExcelCSV() {
+      const { rows, selectedArea } = getFilteredAttendanceRows();
+      if (!rows.length) return alert("No records found to export for the selected filter.");
+
+      const headers = ["Date", "Employee ID", "Full Name", "Project Area", "Status", "Punch Time", "Live Street Address", "Latitude", "Longitude", "Google Maps Link"];
+      const csvLines = [headers.join(",")];
+
+      rows.forEach(r => {
+        const mapLink = r.lat && r.lng ? `https://www.google.com/maps?q=${r.lat},${r.lng}` : "";
+        csvLines.push([
+          r.att_date,
+          r.emp_code,
+          `"${(r.full_name || '').replace(/"/g, '""')}"`,
+          `"${(r.zone_name || '').replace(/"/g, '""')}"`,
+          r.status,
+          `"${r.att_time}"`,
+          `"${(r.recorded_address || '').replace(/"/g, '""')}"`,
+          r.lat || "",
+          r.lng || "",
+          `"${mapLink}"`
+        ].join(","));
+      });
+
+      const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Attendance_${selectedArea}_${filterStartDate}_to_${filterEndDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     // ============================================================================
     // ADD / EDIT USER NAME / MANAGE EMPLOYEES
     // ============================================================================
-    function renderEmployeeMaintenanceTable() {
+    function renderEmployeeMaintenanceTable(selectedArea = 'ALL') {
       const tbody = document.getElementById('employee-list-body');
-      tbody.innerHTML = '';
-
       const visibleUsers = currentUser.role === 'coordinator'
         ? usersData.filter(u => u.zone_name === currentUser.zone_name && u.role === 'employee')
-        : usersData;
+        : (selectedArea === 'ALL' ? usersData : usersData.filter(u => u.zone_name === selectedArea));
 
+      let html = '';
       visibleUsers.forEach(u => {
         const statusBadge = u.status === 'active'
           ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[11px] font-bold">Active</span>`
           : `<span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[11px] font-bold">Outgoing</span>`;
 
-        tbody.innerHTML += `
+        html += `
           <tr class="hover:bg-slate-50">
             <td class="py-2.5 px-3 font-extrabold text-slate-900">${u.emp_code}</td>
             <td class="py-2.5 px-3 font-mono text-slate-500">${u.pin_code}</td>
-            <td class="py-2.5 px-3 font-bold text-slate-800">${u.full_name}</td>
+            <td class="py-2.5 px-3">
+              <button onclick="openEmployeeProfileModal('${u.emp_code}')" class="font-bold text-blue-700 hover:underline">${u.full_name} ↗</button>
+            </td>
             <td class="py-2.5 px-3 uppercase text-[11px] font-extrabold text-indigo-700">${u.role}</td>
             <td class="py-2.5 px-3 font-semibold">${u.zone_name}</td>
+            <td class="py-2.5 px-3 text-[11px] text-slate-600">${u.phone || '-'} | PAN: ${u.pan_card || '-'}</td>
             <td class="py-2.5 px-3">${statusBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
               <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-2.5 py-1 rounded text-[11px] font-bold">
-                ✏️ Edit Name / Area
+                ✏️ Edit
               </button>
               <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded text-[11px] font-bold">
                 ${u.status === 'active' ? 'Mark Outgoing' : 'Activate'}
@@ -899,14 +1295,18 @@
           </tr>
         `;
       });
+      tbody.innerHTML = html;
     }
 
     function prefillEditUser(empCode) {
       const u = usersData.find(x => x.emp_code === empCode);
       if (!u) return;
+      if (currentUser.role === 'coordinator' && (u.zone_name !== currentUser.zone_name || u.role !== 'employee')) return;
       document.getElementById('new-emp-code').value = u.emp_code;
       document.getElementById('new-emp-name').value = u.full_name;
       document.getElementById('new-emp-pin').value = u.pin_code;
+      document.getElementById('new-emp-phone').value = u.phone || '';
+      document.getElementById('new-emp-pan').value = u.pan_card || '';
       document.getElementById('new-emp-zone').value = u.zone_name;
       document.getElementById('new-emp-role').value = u.role;
       document.getElementById('new-emp-name').focus();
@@ -917,13 +1317,20 @@
       const code = document.getElementById('new-emp-code').value.trim().toUpperCase();
       const name = document.getElementById('new-emp-name').value.trim();
       const pin = document.getElementById('new-emp-pin').value.trim() || '1234';
+      const phone = document.getElementById('new-emp-phone').value.trim();
+      const pan = document.getElementById('new-emp-pan').value.trim().toUpperCase();
       const zone = currentUser.role === 'coordinator' ? currentUser.zone_name : document.getElementById('new-emp-zone').value;
       const role = currentUser.role === 'coordinator' ? 'employee' : document.getElementById('new-emp-role').value;
 
-      const userObj = { emp_code: code, pin_code: pin, full_name: name, role, zone_name: zone, status: 'active' };
+      const userObj = { emp_code: code, pin_code: pin, full_name: name, role, zone_name: zone, status: 'active', phone, pan_card: pan };
 
       if (isSupabaseConfigured) {
-        await supabaseClient.from('app_users').upsert(userObj, { onConflict: 'emp_code' });
+        const { error } = await supabaseClient.from('app_users').upsert(userObj, { onConflict: 'emp_code' });
+        if (error) {
+          // Automatic fallback if phone/pan_card columns haven't been added in Supabase SQL yet
+          const basicObj = { emp_code: code, pin_code: pin, full_name: name, role, zone_name: zone, status: 'active' };
+          await supabaseClient.from('app_users').upsert(basicObj, { onConflict: 'emp_code' });
+        }
         await loadAllData();
       } else {
         const idx = usersData.findIndex(u => u.emp_code === code);
@@ -940,11 +1347,14 @@
 
       document.getElementById('new-emp-code').value = '';
       document.getElementById('new-emp-name').value = '';
+      document.getElementById('new-emp-phone').value = '';
+      document.getElementById('new-emp-pan').value = '';
     }
 
     async function toggleEmployeeStatus(empCode) {
       const user = usersData.find(u => u.emp_code === empCode);
       if (!user) return;
+      if (currentUser.role === 'coordinator' && user.zone_name !== currentUser.zone_name) return;
       const nextStatus = user.status === 'active' ? 'outgoing' : 'active';
       if (isSupabaseConfigured) {
         await supabaseClient.from('app_users').update({ status: nextStatus }).eq('emp_code', empCode);
@@ -958,6 +1368,8 @@
 
     async function deleteEmployee(empCode) {
       if (empCode === 'ADMIN01') return alert("Cannot delete Master Admin.");
+      const user = usersData.find(u => u.emp_code === empCode);
+      if (currentUser.role === 'coordinator' && (!user || user.zone_name !== currentUser.zone_name)) return;
       if (isSupabaseConfigured) {
         await supabaseClient.from('app_users').delete().eq('emp_code', empCode);
         await loadAllData();
@@ -973,6 +1385,7 @@
     // ============================================================================
     async function handleCreateProjectAndCoordinator(e) {
       e.preventDefault();
+      if (currentUser.role !== 'admin') return;
       const areaName = document.getElementById('proj-area-name').value.trim();
       const coordCode = document.getElementById('proj-coord-code').value.trim().toUpperCase();
       const coordName = document.getElementById('proj-coord-name').value.trim();
@@ -1013,6 +1426,7 @@
           });
         }
         saveLocalFallback();
+        populateZoneDropdowns();
         renderDashboard();
       }
 
@@ -1023,8 +1437,8 @@
 
     function renderProjectsHierarchy() {
       const grid = document.getElementById('projects-hierarchy-grid');
-      if (!grid) return;
-      grid.innerHTML = '';
+      if (!grid || currentUser.role !== 'admin') return;
+      let html = '';
 
       zonesData.forEach(z => {
         const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name);
@@ -1038,7 +1452,7 @@
           ? emps.map(e => `<span class="inline-block bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">${e.full_name} (${e.emp_code})</span>`).join(' ')
           : `<span class="text-xs text-slate-400">No employees added under this project yet</span>`;
 
-        grid.innerHTML += `
+        html += `
           <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
             <div class="flex items-center justify-between border-b border-slate-200 pb-2">
               <span class="font-extrabold text-sm text-slate-900">📍 ${z.zone_name}</span>
@@ -1055,6 +1469,7 @@
           </div>
         `;
       });
+      grid.innerHTML = html;
     }
 
     function switchDashTab(tabId) {
@@ -1064,11 +1479,11 @@
       document.getElementById(tabId).classList.remove('hidden');
     }
 
-    function viewPhoto(empCode) {
-      const log = attendanceData.find(a => a.emp_code === empCode && a.att_date === todayStr);
+    function viewPhoto(empCode, targetDate = todayStr) {
+      const log = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
       if (!log || !log.photo_base64) return;
       document.getElementById('modal-img').src = log.photo_base64;
-      document.getElementById('modal-caption').textContent = `${log.full_name} (${empCode}) — Assigned: ${log.zone_name} | Time: ${log.att_time}`;
+      document.getElementById('modal-caption').textContent = `${log.full_name} (${empCode}) — Assigned: ${log.zone_name} | ${log.att_date} ${log.att_time}`;
       document.getElementById('modal-address').textContent = `📍 Recorded Location: ${log.recorded_address || 'GPS Coords Captured'}`;
       document.getElementById('modal-map-link').href = `https://www.google.com/maps?q=${log.lat},${log.lng}`;
       document.getElementById('photo-modal').classList.remove('hidden');
