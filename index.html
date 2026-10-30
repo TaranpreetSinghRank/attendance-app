@@ -369,13 +369,10 @@
           </div>
         </div>
 
-        <!-- TAB 3: CREATE PROJECT & COORDINATOR (WITH EDIT PROJECT NAME OPTION) -->
+        <!-- TAB 3: CREATE PROJECT & COORDINATOR -->
         <div id="tab-projects" class="hidden p-4 space-y-5">
-          <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200 space-y-4">
-            <div>
-              <h4 class="text-xs font-extrabold uppercase text-indigo-950 mb-1">🏢 Create New Project / Area & Assign Coordinator</h4>
-              <p class="text-[11px] text-slate-600">Tip: To rename an existing project, click the <b>✏️ Rename</b> button on any project card below!</p>
-            </div>
+          <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200">
+            <h4 class="text-xs font-extrabold uppercase text-indigo-950 mb-2.5">🏢 Create New Project / Area & Assign Coordinator</h4>
             <form onsubmit="handleCreateProjectAndCoordinator(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
               <input type="text" id="proj-area-name" required placeholder="Project / Area Name *" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold" />
               <input type="text" id="proj-coord-code" placeholder="Coordinator ID (e.g. COORD05)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold uppercase" />
@@ -1273,7 +1270,7 @@
       grid.innerHTML = zonesData.map(z => {
         const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name && u.role === 'employee');
         
-        // FIX: Display Coordinator's Full Name instead of static text
+        // FIX: Display Coordinator's Full Name instead of hardcoded supervisor text
         const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name && u.status === 'active');
         const coordNames = coords.length ? coords.map(c => c.full_name).join(', ') : 'No Coordinator';
 
@@ -1433,4 +1430,220 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.
+      link.download = `Attendance_${selectedArea || 'All'}_${filterStartDate}_to_${filterEndDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function renderEmployeeMaintenanceTable(selectedArea = 'ALL') {
+      const tbody = document.getElementById('employee-list-body');
+      const visibleUsers = currentUser.role === 'coordinator'
+        ? usersData.filter(u => u.zone_name === currentUser.zone_name)
+        : (selectedArea === 'ALL' || !selectedArea ? usersData : usersData.filter(u => u.zone_name === selectedArea));
+
+      tbody.innerHTML = visibleUsers.map(u => {
+        const statusBadge = u.status === 'active'
+          ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[11px] font-bold">Active</span>`
+          : `<span class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[11px] font-bold">Outgoing</span>`;
+
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-3 font-extrabold text-slate-900">${u.emp_code}</td>
+            <td class="py-2.5 px-3 font-mono text-slate-500">${u.pin_code}</td>
+            <td class="py-2.5 px-3">
+              <button onclick="openEmployeeProfileModal('${u.emp_code}')" class="font-bold text-blue-700 hover:underline">${u.full_name} ↗</button>
+            </td>
+            <td class="py-2.5 px-3 uppercase text-[11px] font-extrabold text-indigo-700">${u.role}</td>
+            <td class="py-2.5 px-3 font-semibold text-slate-700">${u.designation || (u.role === 'coordinator' ? 'Supervisor' : 'Employee')}</td>
+            <td class="py-2.5 px-3 font-semibold">${u.zone_name}</td>
+            <td class="py-2.5 px-3">${statusBadge}</td>
+            <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[11px] font-bold">✏️ Edit</button>
+              <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-[11px] font-bold">${u.status === 'active' ? 'Outgoing' : 'Activate'}</button>
+              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 text-rose-700 px-2 py-1 rounded text-[11px] font-bold">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function prefillEditUser(empCode) {
+      const u = usersData.find(x => x.emp_code === empCode);
+      if (!u) return;
+      if (currentUser.role === 'coordinator' && u.zone_name !== currentUser.zone_name) return;
+      document.getElementById('new-emp-code').value = u.emp_code;
+      document.getElementById('new-emp-name').value = u.full_name;
+      document.getElementById('new-emp-pin').value = u.pin_code;
+      document.getElementById('new-emp-phone').value = u.phone || '';
+      document.getElementById('new-emp-pan').value = u.pan_card || '';
+      document.getElementById('new-emp-designation').value = u.designation || '';
+      document.getElementById('new-emp-zone').value = u.zone_name;
+      document.getElementById('new-emp-role').value = u.role;
+      document.getElementById('new-emp-name').focus();
+    }
+
+    async function handleSaveUser(e) {
+      e.preventDefault();
+      const code = document.getElementById('new-emp-code').value.trim().toUpperCase();
+      const name = document.getElementById('new-emp-name').value.trim();
+      const pin = document.getElementById('new-emp-pin').value.trim() || '1234';
+      const phone = document.getElementById('new-emp-phone').value.trim();
+      const pan = document.getElementById('new-emp-pan').value.trim().toUpperCase();
+      const designation = document.getElementById('new-emp-designation').value.trim();
+      const zone = currentUser.role === 'coordinator' ? currentUser.zone_name : document.getElementById('new-emp-zone').value;
+      const role = currentUser.role === 'coordinator' ? 'employee' : document.getElementById('new-emp-role').value;
+
+      const userObj = { emp_code: code, pin_code: pin, full_name: name, role, designation, zone_name: zone, status: 'active', phone, pan_card: pan };
+
+      if (isSupabaseConfigured) {
+        const { error } = await supabaseClient.from('app_users').upsert(userObj, { onConflict: 'emp_code' });
+        if (error) {
+          const basicObj = { emp_code: code, pin_code: pin, full_name: name, role, zone_name: zone, status: 'active' };
+          await supabaseClient.from('app_users').upsert(basicObj, { onConflict: 'emp_code' });
+        }
+        await loadAllData();
+      } else {
+        const idx = usersData.findIndex(u => u.emp_code === code);
+        if (idx >= 0) usersData[idx] = userObj;
+        else usersData.push(userObj);
+        saveLocalFallback();
+        renderDashboard();
+      }
+
+      document.getElementById('new-emp-code').value = '';
+      document.getElementById('new-emp-name').value = '';
+      document.getElementById('new-emp-phone').value = '';
+      document.getElementById('new-emp-pan').value = '';
+      document.getElementById('new-emp-designation').value = '';
+    }
+
+    async function toggleEmployeeStatus(empCode) {
+      const user = usersData.find(u => u.emp_code === empCode);
+      if (!user) return;
+      if (currentUser.role === 'coordinator' && user.zone_name !== currentUser.zone_name) return;
+      const nextStatus = user.status === 'active' ? 'outgoing' : 'active';
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('app_users').update({ status: nextStatus }).eq('emp_code', empCode);
+        await loadAllData();
+      } else {
+        user.status = nextStatus;
+        saveLocalFallback();
+        renderDashboard();
+      }
+    }
+
+    async function deleteEmployee(empCode) {
+      if (empCode === 'ADMIN01') return alert("Cannot delete Master Admin.");
+      const user = usersData.find(u => u.emp_code === empCode);
+      if (currentUser.role === 'coordinator' && (!user || user.zone_name !== currentUser.zone_name)) return;
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('app_users').delete().eq('emp_code', empCode);
+        await loadAllData();
+      } else {
+        usersData = usersData.filter(u => u.emp_code !== empCode);
+        saveLocalFallback();
+        renderDashboard();
+      }
+    }
+
+    async function handleCreateProjectAndCoordinator(e) {
+      e.preventDefault();
+      if (currentUser.role !== 'admin') return;
+      const areaName = document.getElementById('proj-area-name').value.trim();
+      const coordCode = document.getElementById('proj-coord-code').value.trim().toUpperCase();
+      const coordName = document.getElementById('proj-coord-name').value.trim();
+      const coordPin = document.getElementById('proj-coord-pin').value.trim() || '1234';
+
+      const newZone = { zone_name: areaName, center_lat: 28.5000, center_lng: 79.0000, radius_meters: 5000, is_pan_india: true };
+
+      if (isSupabaseConfigured) {
+        await supabaseClient.from('zones').upsert(newZone, { onConflict: 'zone_name' });
+        if (coordCode && coordName) {
+          await supabaseClient.from('app_users').upsert({
+            emp_code: coordCode,
+            pin_code: coordPin,
+            full_name: coordName,
+            role: 'coordinator',
+            designation: 'Supervisor',
+            zone_name: areaName,
+            status: 'active'
+          }, { onConflict: 'emp_code' });
+        }
+        await loadAllData();
+      } else {
+        if (!zonesData.some(z => z.zone_name === areaName)) zonesData.push(newZone);
+        if (coordCode && coordName) {
+          usersData = usersData.filter(u => u.emp_code !== coordCode);
+          usersData.push({ emp_code: coordCode, pin_code: coordPin, full_name: coordName, role: 'coordinator', designation: 'Supervisor', zone_name: areaName, status: 'active' });
+        }
+        saveLocalFallback();
+        populateZoneDropdowns();
+        renderDashboard();
+      }
+
+      e.target.reset();
+      document.getElementById('proj-coord-pin').value, '1234';
+      alert(`Project Area "${areaName}" created successfully!`);
+    }
+
+    function renderProjectsHierarchy() {
+      const grid = document.getElementById('projects-hierarchy-grid');
+      if (!grid || currentUser.role !== 'admin') return;
+
+      grid.innerHTML = zonesData.map(z => {
+        const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name);
+        const emps = usersData.filter(u => u.role === 'employee' && u.zone_name === z.zone_name && u.status === 'active');
+
+        const coordBadges = coords.length
+          ? coords.map(c => `<span class="inline-block bg-indigo-100 text-indigo-900 font-bold px-2.5 py-1 rounded-lg text-xs">${c.full_name} (ID: ${c.emp_code} | PIN: ${c.pin_code})</span>`).join(' ')
+          : `<span class="text-xs text-rose-600 font-semibold">No Coordinator Assigned</span>`;
+
+        const empNames = emps.length
+          ? emps.map(e => `<span class="inline-block bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">${e.full_name} (${e.emp_code})</span>`).join(' ')
+          : `<span class="text-xs text-slate-400">No employees under this project</span>`;
+
+        return `
+          <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+              <span class="font-extrabold text-sm text-slate-900">📍 ${z.zone_name}</span>
+              <span class="text-xs font-bold text-slate-500">${emps.length} Active Staff</span>
+            </div>
+            <div>
+              <p class="text-[10px] font-extrabold uppercase text-slate-400 mb-1">Coordinator:</p>
+              <div class="flex flex-wrap gap-1">${coordBadges}</div>
+            </div>
+            <div>
+              <p class="text-[10px] font-extrabold uppercase text-slate-400 mb-1">Employees:</p>
+              <div class="flex flex-wrap gap-1">${empNames}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function switchDashTab(tabId) {
+      ['tab-attendance', 'tab-employees', 'tab-projects'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+    }
+
+    function viewPhoto(empCode, targetDate = todayStr) {
+      const log = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
+      const imgUrl = resolveAccessiblePhotoUrl(log);
+      if (!imgUrl) return;
+      document.getElementById('modal-img').src = imgUrl;
+      document.getElementById('modal-caption').textContent = `${log.full_name} (${empCode}) — ${log.zone_name} | ${log.att_date} ${log.att_time}`;
+      document.getElementById('modal-address').textContent = `📍 Recorded Location: ${log.recorded_address || 'GPS Captured'}`;
+      document.getElementById('modal-map-link').href = `https://www.google.com/maps?q=${log.lat},${log.lng}`;
+      document.getElementById('modal-direct-img-link').href = imgUrl;
+      document.getElementById('photo-modal').classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      document.getElementById('photo-modal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
