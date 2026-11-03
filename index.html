@@ -73,7 +73,7 @@
             <label class="block text-xs font-bold uppercase text-slate-600 mb-1">PIN / Password</label>
             <input type="password" id="login-pin" required value="1234"
               class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-bold" />
-            <p class="text-[11px] text-slate-400 mt-1.5 font-medium">🔒 Password / PIN is provided exclusively by Admin.</p>
+            <p class="text-[11px] text-slate-400 mt-1.5 font-medium"> Password / PIN is provided exclusively by Admin.</p>
           </div>
           <button id="btn-login-submit" type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-md transition">
             Sign In to Portal →
@@ -288,13 +288,13 @@
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="border-b border-slate-200 bg-slate-50 px-4 pt-3 flex flex-wrap gap-2">
           <button onclick="switchDashTab('tab-attendance')" id="btn-tab-attendance" class="px-4 py-2 text-xs font-extrabold rounded-t-xl bg-white text-blue-700 border-t border-x border-slate-200">
-            📋 Attendance & Recorded Google Locations
+             Attendance & Recorded Google Locations
           </button>
           <button onclick="switchDashTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2 text-xs font-extrabold rounded-t-xl text-slate-600 hover:text-slate-900">
-            👥 Manage Employees (Add / Edit Profile / Outgoing)
+             Manage Employees (Add / Edit Profile / Outgoing)
           </button>
           <button onclick="switchDashTab('tab-projects')" id="btn-tab-projects" class="hidden px-4 py-2 text-xs font-extrabold rounded-t-xl text-indigo-700 hover:text-indigo-900">
-            🏢 Create / Edit Project Area & Assign Coordinator
+             Create / Edit Project Area & Assign Coordinator
           </button>
         </div>
 
@@ -379,7 +379,7 @@
         <div id="tab-projects" class="hidden p-4 space-y-5">
           <div class="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200">
             <div class="flex items-center justify-between mb-2.5">
-              <h4 id="proj-form-title" class="text-xs font-extrabold uppercase text-indigo-950">🏢 Create / Edit Project Area & Assign Coordinator</h4>
+              <h4 id="proj-form-title" class="text-xs font-extrabold uppercase text-indigo-950"> Create / Edit Project Area & Assign Coordinator</h4>
               <button type="button" onclick="resetProjectForm()" class="text-[11px] text-indigo-700 font-bold underline">Clear / New Project</button>
             </div>
             <form onsubmit="handleCreateProjectAndCoordinator(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
@@ -1166,7 +1166,7 @@
                 ${!isDefault ? `<button onclick="deleteProjectArea('${z.zone_name}')" title="Delete Project" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded">🗑️</button>` : ''}
               </div>
             </div>
-            <p class="text-[11px] text-indigo-700 font-semibold mt-1 truncate">👤 Coord: ${coordNames}</p>
+            <p class="text-[11px] text-indigo-700 font-semibold mt-1 truncate"> Coordinator: ${coordNames}</p>
             <div class="grid grid-cols-3 gap-1 text-center text-[11px] font-bold mt-2">
               <div class="bg-emerald-100 text-emerald-800 py-1 rounded">P: ${p}</div>
               <div class="bg-rose-100 text-rose-800 py-1 rounded">A: ${a}</div>
@@ -1185,7 +1185,7 @@
 
     function prefillEditProject(zoneName) {
       switchDashTab('tab-projects');
-      document.getElementById('proj-form-title').textContent = `✏️ Edit Project Area: ${zoneName}`;
+      document.getElementById('proj-form-title').textContent = ` Edit Project Area: ${zoneName}`;
       document.getElementById('proj-old-name').value = zoneName;
       document.getElementById('proj-area-name').value = zoneName;
       const coord = usersData.find(u => u.role === 'coordinator' && u.zone_name === zoneName);
@@ -1388,7 +1388,7 @@
             <td class="py-2.5 px-3 font-mono text-xs text-slate-700">${u.aadhaar_card || '[Aadhaar Redacted]'}</td>
             <td class="py-2.5 px-3">${statusBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
-              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[11px] font-bold">✏️ Edit</button>
+              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[11px] font-bold"> Edit</button>
               <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-[11px] font-bold">${u.status === 'active' ? 'Outgoing' : 'Activate'}</button>
               <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 text-rose-700 px-2 py-1 rounded text-[11px] font-bold">Delete</button>
             </td>
