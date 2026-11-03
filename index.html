@@ -72,9 +72,6 @@
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block text-xs font-bold uppercase text-slate-600">PIN / Password</label>
-              <button type="button" onclick="openPasswordResetModal()" class="text-xs font-extrabold text-blue-600 hover:underline">
-                Forgot Password / Reset PIN?
-              </button>
             </div>
             <input type="password" id="login-pin" required value="1234"
               class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-bold" />
@@ -198,7 +195,7 @@
       <div id="admin-reset-requests-panel" class="hidden bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 shadow-sm">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
           <div class="flex items-center gap-2">
-            <span class="bg-amber-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-lg"> Action Required</span>
+            <span class="bg-amber-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-lg">Action Required</span>
             <h3 class="text-sm font-extrabold text-amber-950">Pending Password / PIN Reset Requests</h3>
           </div>
           <span class="text-xs font-semibold text-amber-800">Approve request so user can set a new PIN</span>
@@ -330,7 +327,7 @@
         <!-- TAB 2: MANAGE USERS (WITH ROLE FILTER DROPDOWN) -->
         <div id="tab-employees" class="hidden p-4 space-y-5">
           <div class="bg-blue-50/60 p-4 rounded-xl border border-blue-200">
-            <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-2">➕ Add / Edit User Profile</h4>
+            <h4 class="text-xs font-extrabold uppercase text-blue-950 mb-2"> Add / Edit User Profile</h4>
             <form onsubmit="handleSaveUser(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
               <input type="text" id="new-emp-code" required placeholder="ID Code (e.g. EMP105)" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold uppercase" />
               <input type="text" id="new-emp-name" required placeholder="Full Name" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold" />
@@ -411,23 +408,16 @@
         <button onclick="closePasswordResetModal()" class="text-xs font-bold text-slate-400 hover:text-slate-700">✕ Close</button>
       </div>
       <p class="text-xs text-slate-600 leading-relaxed">
-        Enter your <b>User ID / Code</b>. This sends a reset request to the Admin. Once approved, click "Check / Request" again to set your new PIN.
+        Enter your <b>User ID / Code</b>. Contact Admin to get your password/PIN.
       </p>
       <div class="space-y-3">
         <div class="flex gap-2">
           <input type="text" id="reset-emp-code" placeholder="Enter ID (e.g. EMP101)" class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold uppercase" />
           <button type="button" onclick="checkOrRequestPinReset()" class="bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow">
-            Check / Request
+            Check
           </button>
         </div>
         <div id="reset-status-box" class="hidden p-3.5 rounded-xl text-xs font-semibold"></div>
-        <div id="reset-new-pin-section" class="hidden pt-2 border-t border-slate-200 space-y-2.5">
-          <label class="block text-[11px] font-extrabold uppercase text-emerald-700">✔ Admin Approved! Set Your New PIN:</label>
-          <input type="password" id="reset-new-pin-input" placeholder="Enter new 4-6 digit PIN" class="w-full px-3.5 py-2.5 rounded-xl border-2 border-emerald-400 text-xs font-bold" />
-          <button type="button" onclick="saveApprovedNewPin()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs shadow">
-            Save New PIN & Return to Login
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -565,6 +555,7 @@
       injectPWAManifest();
       document.getElementById('filter-date-start').value = todayStr;
       document.getElementById('filter-date-end').value = todayStr;
+      onRoleSelectionChange();
 
       if (!isSupabaseConfigured) {
         document.getElementById('demo-mode-banner').classList.remove('hidden');
@@ -644,7 +635,6 @@
       const prefill = document.getElementById('login-emp-code').value.trim().toUpperCase();
       document.getElementById('reset-emp-code').value = prefill;
       document.getElementById('reset-status-box').classList.add('hidden');
-      document.getElementById('reset-new-pin-section').classList.add('hidden');
       document.getElementById('password-reset-modal').classList.remove('hidden');
     }
 
@@ -654,121 +644,22 @@
 
     async function checkOrRequestPinReset() {
       const code = document.getElementById('reset-emp-code').value.trim().toUpperCase();
-      if (!code) return alert("Please enter your User ID / Employee Code.");
-
+      if (!code) return alert("Please enter your User ID.");
       if (isSupabaseConfigured) {
         const { data: allU } = await supabaseClient.from('app_users').select('*');
         if (allU?.length) usersData = allU;
-        const { data: allR } = await supabaseClient.from('password_resets').select('*');
-        if (allR) passwordResetsData = allR;
       }
-
       const user = usersData.find(u => u.emp_code.toUpperCase() === code);
       const statusBox = document.getElementById('reset-status-box');
-      const newPinSec = document.getElementById('reset-new-pin-section');
       statusBox.classList.remove('hidden');
-      newPinSec.classList.add('hidden');
 
       if (!user) {
         statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300";
-        statusBox.textContent = `User ID "${code}" not found.`;
-        return;
+        statusBox.textContent = `User ID "${code}" not found. Please contact Admin.`;
+      } else {
+        statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-900 border border-blue-300";
+        statusBox.textContent = `User found: ${user.full_name} (${user.role.toUpperCase()}). Please contact your Master Admin to retrieve or update your password.`;
       }
-
-      const existingReq = passwordResetsData.find(r => r.emp_code.toUpperCase() === code);
-
-      if (existingReq && existingReq.status === 'approved') {
-        statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300";
-        statusBox.textContent = `✔ Admin approved your request! Enter your new PIN below.`;
-        newPinSec.classList.remove('hidden');
-        return;
-      }
-
-      if (existingReq && existingReq.status === 'pending') {
-        statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300";
-        statusBox.textContent = `⏳ Request is pending Admin approval.`;
-        return;
-      }
-
-      const reqRecord = {
-        emp_code: user.emp_code,
-        full_name: user.full_name,
-        zone_name: user.zone_name,
-        status: 'pending',
-        requested_at: new Date().toISOString()
-      };
-
-      if (isSupabaseConfigured) {
-        await supabaseClient.from('password_resets').upsert(reqRecord, { onConflict: 'emp_code' });
-      }
-      passwordResetsData = passwordResetsData.filter(r => r.emp_code !== user.emp_code);
-      passwordResetsData.unshift(reqRecord);
-      saveLocalFallback();
-
-      statusBox.className = "p-3.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-900 border border-blue-300";
-      statusBox.textContent = `📩 Reset Request sent to Admin!`;
-    }
-
-    async function saveApprovedNewPin() {
-      const code = document.getElementById('reset-emp-code').value.trim().toUpperCase();
-      const newPin = document.getElementById('reset-new-pin-input').value.trim();
-      if (!newPin || newPin.length < 4) return alert("Please enter a valid PIN (at least 4 digits).");
-
-      if (isSupabaseConfigured) {
-        await supabaseClient.from('app_users').update({ pin_code: newPin }).eq('emp_code', code);
-        await supabaseClient.from('password_resets').update({ status: 'completed' }).eq('emp_code', code);
-      }
-
-      const u = usersData.find(x => x.emp_code === code);
-      if (u) u.pin_code = newPin;
-      const r = passwordResetsData.find(x => x.emp_code === code);
-      if (r) r.status = 'completed';
-      saveLocalFallback();
-
-      alert(`✔ New PIN saved!`);
-      document.getElementById('login-emp-code').value = code;
-      document.getElementById('login-pin').value = newPin;
-      closePasswordResetModal();
-    }
-
-    async function handleAdminResetDecision(empCode, decision) {
-      if (currentUser?.role !== 'admin') return;
-      if (isSupabaseConfigured) {
-        await supabaseClient.from('password_resets').update({ status: decision }).eq('emp_code', empCode);
-      }
-      const req = passwordResetsData.find(r => r.emp_code === empCode);
-      if (req) req.status = decision;
-      saveLocalFallback();
-      renderAdminResetRequestsPanel();
-    }
-
-    function renderAdminResetRequestsPanel() {
-      const panel = document.getElementById('admin-reset-requests-panel');
-      const list = document.getElementById('admin-reset-requests-list');
-      if (!panel || currentUser?.role !== 'admin') {
-        if (panel) panel.classList.add('hidden');
-        return;
-      }
-
-      const pendingList = passwordResetsData.filter(r => r.status === 'pending');
-      if (!pendingList.length) {
-        panel.classList.add('hidden');
-        return;
-      }
-
-      panel.classList.remove('hidden');
-      list.innerHTML = pendingList.map(r => `
-        <div class="bg-white p-3 rounded-xl border border-amber-300 flex items-center justify-between gap-2">
-          <div>
-            <div class="font-extrabold text-xs text-slate-900">${r.full_name} (${r.emp_code})</div>
-            <div class="text-[11px] text-slate-500">Area: ${r.zone_name || 'N/A'}</div>
-          </div>
-          <div class="flex gap-1.5">
-            <button onclick="handleAdminResetDecision('${r.emp_code}', 'approved')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Approve</button>
-            <button onclick="handleAdminResetDecision('${r.emp_code}', 'rejected')" class="bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold px-2.5 py-1.5 rounded-lg">Reject</button>
-          </div>
-        </div>
-      `).join('');
     }
 
     function quickLogin(code) {
@@ -1286,7 +1177,7 @@
         renderAreaBreakdownCards(activeEmployees, selectedArea);
         renderProjectsHierarchy();
       }
-      renderEmployeeMaintenanceTable(selectedArea);
+      renderEmployeeMaintenanceTable();
     }
 
     function renderAreaBreakdownCards(activeEmployees, selectedArea) {
@@ -1316,7 +1207,7 @@
               <span class="font-extrabold text-xs text-slate-900">${z.zone_name}</span>
               <span class="text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">Staff: ${zoneEmps.length}</span>
             </div>
-            <p class="text-[11px] text-indigo-700 font-semibold mt-1 truncate"> Coord: ${coordNames}</p>
+            <p class="text-[11px] text-indigo-700 font-semibold mt-1 truncate">👤 Coord: ${coordNames}</p>
             <div class="grid grid-cols-3 gap-1 text-center text-[11px] font-bold mt-2">
               <div class="bg-emerald-100 text-emerald-800 py-1 rounded">P: ${p}</div>
               <div class="bg-rose-100 text-rose-800 py-1 rounded">A: ${a}</div>
@@ -1464,7 +1355,7 @@
       const roleFilter = document.getElementById('user-role-filter').value;
 
       let list = currentUser.role === 'coordinator' 
-        ? usersData.filter(u => u.zone_name === currentUser.zone_name && u.role === 'employee')
+        ? usersData.filter(u => u.zone_name === currentUser.zone_name)
         : usersData;
 
       if (roleFilter !== 'ALL') {
