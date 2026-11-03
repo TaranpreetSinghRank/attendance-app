@@ -960,7 +960,7 @@
       if (currentUser && currentUser.role === 'coordinator') return;
 
       const prevSelected = areaSelect.value;
-      areaSelect.innerHTML = `<option value="" disabled selected>-- Choose Area --</option><option value="ALL">All Projects / Areas (Pan-India)</option>`;
+      areaSelect.innerHTML = `<option value="" disabled selected>-- Choose Area --</option><option value="ALL"> All Projects </option>`;
       newEmpZone.innerHTML = ``;
       zonesData.forEach(z => {
         areaSelect.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
