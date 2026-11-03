@@ -205,7 +205,7 @@
               <label class="text-xs font-bold text-slate-500 uppercase">Area:</label>
               <select id="area-filter-select" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2">
                 <option value="" disabled selected>-- Choose Area --</option>
-                <option value="ALL">All Projects</option>
+                <option value="ALL">All Projects </option>
               </select>
             </div>
 
@@ -221,7 +221,7 @@
 
         <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1">📅 Period:</span>
+            <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1"> Period:</span>
             <button onclick="setDatePreset('TODAY')" id="preset-TODAY" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-700 text-white">Today</button>
             <button onclick="setDatePreset('YESTERDAY')" id="preset-YESTERDAY" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Yesterday</button>
             <button onclick="setDatePreset('LAST7')" id="preset-LAST7" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Last 7 Days</button>
