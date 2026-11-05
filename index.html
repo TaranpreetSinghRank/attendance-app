@@ -114,14 +114,38 @@
             <i data-lucide="check-circle-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <span class="bg-emerald-700 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider">Already Submitted Today</span>
-            <h4 class="text-base font-extrabold text-emerald-950 mt-2">Attendance Locked for Today</h4>
+            <span id="lockout-badge-text" class="bg-emerald-700 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider">Already Submitted Today</span>
+            <h4 id="lockout-heading-text" class="text-base font-extrabold text-emerald-950 mt-2">Attendance Locked for Today</h4>
             <p id="lockout-details" class="text-xs text-emerald-800 font-semibold mt-1"></p>
+            <p id="lockout-punchout-details" class="text-xs text-indigo-900 font-bold mt-1 hidden"></p>
+            <div id="lockout-duration-pill" class="hidden inline-block bg-indigo-600 text-white text-xs font-extrabold px-3.5 py-1 rounded-full mt-2 shadow-sm"></div>
           </div>
-          <img id="lockout-photo" class="w-56 h-40 object-cover rounded-xl mx-auto border border-emerald-300 shadow-sm hidden" alt="Submitted selfie" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div id="lockout-photo-in-wrap" class="hidden space-y-1">
+              <p class="text-[10px] font-extrabold uppercase text-emerald-800">🟢 Punch In Photo</p>
+              <img id="lockout-photo" class="w-full h-36 object-cover rounded-xl mx-auto border border-emerald-300 shadow-sm" alt="Punch In selfie" />
+            </div>
+            <div id="lockout-photo-out-wrap" class="hidden space-y-1">
+              <p class="text-[10px] font-extrabold uppercase text-indigo-800">🔴 Punch Out Photo</p>
+              <img id="lockout-photo-out" class="w-full h-36 object-cover rounded-xl mx-auto border border-indigo-300 shadow-sm" alt="Punch Out selfie" />
+            </div>
+          </div>
+          <div id="emp-punchout-Trigger-wrap" class="pt-2 hidden">
+            <button type="button" onclick="startPunchOutFlow()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-xs">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+              <span>Proceed to Punch Out (End Shift & Calculate Hours)</span>
+            </button>
+          </div>
         </div>
 
         <div id="emp-capture-workflow">
+          <div id="emp-punch-mode-banner" class="mb-3 bg-emerald-50 border border-emerald-300 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span id="emp-punch-mode-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+              <span id="emp-punch-mode-title" class="text-xs font-extrabold uppercase text-emerald-900">Step 1: Morning Punch In</span>
+            </div>
+            <span id="emp-punch-mode-sub" class="text-[11px] font-bold text-emerald-700">Start Work Timer</span>
+          </div>
           <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 flex items-start justify-between gap-2">
             <div class="flex items-start gap-2">
               <div class="p-2 bg-blue-100 text-blue-700 rounded-lg mt-0.5">
@@ -341,6 +365,7 @@
                 <th class="py-2.5 px-3">Project Area</th>
                 <th class="py-2.5 px-3">Aadhaar Card</th>
                 <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3">Punch In & Out / Total Duration</th>
                 <th class="py-2.5 px-3">Actual Recorded Location (Google Maps)</th>
                 <th class="py-2.5 px-3">Photo Proof</th>
                 <th class="py-2.5 px-3 text-right">Action</th>
@@ -456,11 +481,12 @@
 
         <!-- COMPACT STATS + DATE FILTER BAR -->
         <div class="flex flex-wrap items-center justify-between gap-2 bg-blue-50/70 border border-blue-200 px-3 py-2 rounded-xl text-xs">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold px-2.5 py-1 rounded-lg text-[11px]">Present: <b id="prof-stat-p">0</b></span>
-            <span class="bg-rose-100 border border-rose-300 text-rose-800 font-extrabold px-2.5 py-1 rounded-lg text-[11px]">Absent: <b id="prof-stat-a">0</b></span>
-            <span class="bg-amber-100 border border-amber-300 text-amber-800 font-extrabold px-2.5 py-1 rounded-lg text-[11px]">Leave: <b id="prof-stat-l">0</b></span>
-            <span class="bg-purple-100 border border-purple-300 text-purple-800 font-extrabold px-2.5 py-1 rounded-lg text-[11px]">Holiday: <b id="prof-stat-h">0</b></span>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold px-2 py-1 rounded-lg text-[11px]">Present: <b id="prof-stat-p">0</b></span>
+            <span class="bg-rose-100 border border-rose-300 text-rose-800 font-extrabold px-2 py-1 rounded-lg text-[11px]">Absent: <b id="prof-stat-a">0</b></span>
+            <span class="bg-amber-100 border border-amber-300 text-amber-800 font-extrabold px-2 py-1 rounded-lg text-[11px]">Leave: <b id="prof-stat-l">0</b></span>
+            <span class="bg-purple-100 border border-purple-300 text-purple-800 font-extrabold px-2 py-1 rounded-lg text-[11px]">Holiday: <b id="prof-stat-h">0</b></span>
+            <span class="bg-indigo-100 border border-indigo-300 text-indigo-900 font-extrabold px-2.5 py-1 rounded-lg text-[11px]">⏱️ Total Worked: <b id="prof-stat-hours">0h 0m</b></span>
           </div>
           <div class="flex items-center gap-1.5 text-[11px]">
             <i data-lucide="calendar" class="w-3.5 h-3.5 text-blue-700"></i>
@@ -522,11 +548,13 @@
               <table class="w-full text-left border-collapse text-xs">
                 <thead class="sticky top-0 z-10">
                   <tr class="bg-slate-100 border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-500">
-                    <th class="py-2 px-2.5">Date</th>
-                    <th class="py-2 px-2.5">Punch Time</th>
-                    <th class="py-2 px-2.5">Status</th>
-                    <th class="py-2 px-2.5">Recorded Location</th>
-                    <th class="py-2 px-2.5">Photo</th>
+                    <th class="py-2 px-2">Date</th>
+                    <th class="py-2 px-2">Punch In</th>
+                    <th class="py-2 px-2">Punch Out</th>
+                    <th class="py-2 px-2">Duration</th>
+                    <th class="py-2 px-2">Status</th>
+                    <th class="py-2 px-2">Recorded Location</th>
+                    <th class="py-2 px-2">Photo</th>
                   </tr>
                 </thead>
                 <tbody id="prof-history-tbody" class="divide-y divide-slate-100"></tbody>
@@ -712,9 +740,74 @@
       handleGlobalSearch();
     }
 
-    function resolveAccessiblePhotoUrl(log) {
+    let empPunchMode = 'IN'; // 'IN' or 'OUT'
+
+    function parseTimeStrToMinutes(timeStr) {
+      if (!timeStr || timeStr === '-') return null;
+      const clean = timeStr.toString().trim();
+      const ampmMatch = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+      if (ampmMatch) {
+        let hrs = parseInt(ampmMatch[1], 10);
+        const mins = parseInt(ampmMatch[2], 10);
+        const period = ampmMatch[3].toUpperCase();
+        if (period === 'PM' && hrs < 12) hrs += 12;
+        if (period === 'AM' && hrs === 12) hrs = 0;
+        return hrs * 60 + mins;
+      }
+      const h24Match = clean.match(/^(\d{1,2}):(\d{2})/);
+      if (h24Match) {
+        return parseInt(h24Match[1], 10) * 60 + parseInt(h24Match[2], 10);
+      }
+      return null;
+    }
+
+    function computeWorkDurationInfo(log) {
+      if (!log) return { text: '-', minutes: 0, decimalHours: '0.00' };
+      if (log.work_duration && log.work_minutes !== undefined) {
+        return {
+          text: log.work_duration,
+          minutes: Number(log.work_minutes) || 0,
+          decimalHours: ((Number(log.work_minutes) || 0) / 60).toFixed(2)
+        };
+      }
+      if (log.punch_in_ts && log.punch_out_ts) {
+        const diffMs = Number(log.punch_out_ts) - Number(log.punch_in_ts);
+        if (diffMs > 0) {
+          const totalMins = Math.max(1, Math.round(diffMs / 60000));
+          const hrs = Math.floor(totalMins / 60);
+          const mins = totalMins % 60;
+          return {
+            text: `${hrs}h ${mins}m`,
+            minutes: totalMins,
+            decimalHours: (totalMins / 60).toFixed(2)
+          };
+        }
+      }
+      const inTime = log.att_time;
+      const outTime = log.punch_out_time;
+      if (inTime && inTime !== '-' && outTime && outTime !== '-') {
+        const inMins = parseTimeStrToMinutes(inTime);
+        const outMins = parseTimeStrToMinutes(outTime);
+        if (inMins !== null && outMins !== null) {
+          let diff = outMins - inMins;
+          if (diff < 0) diff += 24 * 60;
+          const hrs = Math.floor(diff / 60);
+          const mins = diff % 60;
+          return {
+            text: `${hrs}h ${mins}m`,
+            minutes: diff,
+            decimalHours: (diff / 60).toFixed(2)
+          };
+        }
+      }
+      return { text: '-', minutes: 0, decimalHours: '0.00' };
+    }
+
+    function resolveAccessiblePhotoUrl(log, isPunchOut = false) {
       if (!log) return null;
-      const raw = log.photo_url || log.photo_base64;
+      const raw = isPunchOut
+        ? (log.punch_out_photo || null)
+        : (log.photo_url || log.photo_base64);
       if (!raw) return null;
       if (raw.startsWith('data:image') || raw.startsWith('http://') || raw.startsWith('https://')) {
         return raw;
@@ -869,30 +962,121 @@
       checkEmployeeDailyLockout();
     }
 
+    function updatePunchModeBannerUI() {
+      const banner = document.getElementById('emp-punch-mode-banner');
+      const dot = document.getElementById('emp-punch-mode-dot');
+      const title = document.getElementById('emp-punch-mode-title');
+      const sub = document.getElementById('emp-punch-mode-sub');
+      const previewBtn = document.getElementById('btn-take-preview');
+      const submitBtn = document.getElementById('btn-final-submit');
+
+      if (empPunchMode === 'OUT') {
+        banner.className = 'mb-3 bg-rose-50 border border-rose-300 rounded-xl px-3.5 py-2.5 flex items-center justify-between';
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse';
+        title.className = 'text-xs font-extrabold uppercase text-rose-900';
+        title.textContent = 'Step 2: Evening Punch Out';
+        sub.className = 'text-[11px] font-bold text-rose-700';
+        sub.textContent = 'End Shift & Calculate Hours';
+        previewBtn.className = 'w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm';
+        previewBtn.innerHTML = `<i data-lucide="camera" class="w-4 h-4"></i><span>Click Punch-Out Photo Preview</span>`;
+        submitBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i><span>Confirm & Submit Punch Out</span>`;
+      } else {
+        banner.className = 'mb-3 bg-emerald-50 border border-emerald-300 rounded-xl px-3.5 py-2.5 flex items-center justify-between';
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse';
+        title.className = 'text-xs font-extrabold uppercase text-emerald-900';
+        title.textContent = 'Step 1: Morning Punch In';
+        sub.className = 'text-[11px] font-bold text-emerald-700';
+        sub.textContent = 'Start Work Timer';
+        previewBtn.className = 'w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm';
+        previewBtn.innerHTML = `<i data-lucide="camera" class="w-4 h-4"></i><span>Click Punch-In Photo Preview</span>`;
+        submitBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i><span>Confirm & Submit Punch In</span>`;
+      }
+      lucide.createIcons();
+    }
+
+    function startPunchOutFlow() {
+      empPunchMode = 'OUT';
+      pendingPhotoBase64 = null;
+      pendingPhotoBlob = null;
+      document.getElementById('emp-lockout-card').classList.add('hidden');
+      document.getElementById('emp-capture-workflow').classList.remove('hidden');
+      document.getElementById('btn-take-preview').classList.remove('hidden');
+      document.getElementById('retake-confirm-bar').classList.add('hidden');
+      updatePunchModeBannerUI();
+      fetchLiveGPS();
+      startCamera();
+    }
+
     function checkEmployeeDailyLockout() {
       const existingToday = attendanceData.find(a => a.emp_code === currentUser.emp_code && a.att_date === todayStr);
       const lockoutCard = document.getElementById('emp-lockout-card');
       const captureWorkflow = document.getElementById('emp-capture-workflow');
+      const badgeText = document.getElementById('lockout-badge-text');
+      const headingText = document.getElementById('lockout-heading-text');
+      const outDetailsEl = document.getElementById('lockout-punchout-details');
+      const durPillEl = document.getElementById('lockout-duration-pill');
+      const punchOutBtnWrap = document.getElementById('emp-punchout-Trigger-wrap');
+      const photoInWrap = document.getElementById('lockout-photo-in-wrap');
+      const photoOutWrap = document.getElementById('lockout-photo-out-wrap');
 
       if (existingToday) {
         stopCamera();
         captureWorkflow.classList.add('hidden');
         lockoutCard.classList.remove('hidden');
+
+        const hasPunchedOut = Boolean(existingToday.punch_out_time && existingToday.punch_out_time !== '-');
         document.getElementById('lockout-details').textContent =
-          `Status: ${existingToday.status} • Time: ${existingToday.att_time} • Location: ${existingToday.recorded_address || 'Captured'}`;
+          `🟢 Punch In: ${existingToday.att_time || '-'} • Location: ${existingToday.recorded_address || 'Captured'}`;
+
+        const inImgUrl = resolveAccessiblePhotoUrl(existingToday, false);
         const lockImg = document.getElementById('lockout-photo');
-        const imgUrl = resolveAccessiblePhotoUrl(existingToday);
-        if (imgUrl) {
-          lockImg.src = imgUrl;
-          lockImg.classList.remove('hidden');
+        if (inImgUrl) {
+          lockImg.src = inImgUrl;
+          photoInWrap.classList.remove('hidden');
         } else {
-          lockImg.classList.add('hidden');
+          photoInWrap.classList.add('hidden');
         }
+
+        if (hasPunchedOut) {
+          const durInfo = computeWorkDurationInfo(existingToday);
+          badgeText.textContent = 'Shift Completed (Punch In & Out Done)';
+          badgeText.className = 'bg-indigo-700 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider';
+          headingText.textContent = 'Attendance & Work Hours Recorded for Today';
+          outDetailsEl.textContent = `🔴 Punch Out: ${existingToday.punch_out_time} • Location: ${existingToday.punch_out_address || existingToday.recorded_address || 'Captured'}`;
+          outDetailsEl.classList.remove('hidden');
+          durPillEl.textContent = `⏱️ Total Worked Duration: ${durInfo.text} (${durInfo.decimalHours} hrs)`;
+          durPillEl.classList.remove('hidden');
+          punchOutBtnWrap.classList.add('hidden');
+
+          const outImgUrl = resolveAccessiblePhotoUrl(existingToday, true);
+          const lockImgOut = document.getElementById('lockout-photo-out');
+          if (outImgUrl) {
+            lockImgOut.src = outImgUrl;
+            photoOutWrap.classList.remove('hidden');
+          } else {
+            photoOutWrap.classList.add('hidden');
+          }
+        } else {
+          badgeText.textContent = 'Punched In — Active Shift';
+          badgeText.className = 'bg-emerald-700 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider';
+          headingText.textContent = 'You are Currently Punched In';
+          outDetailsEl.classList.add('hidden');
+          durPillEl.classList.add('hidden');
+          photoOutWrap.classList.add('hidden');
+          if (existingToday.status === 'Present') {
+            punchOutBtnWrap.classList.remove('hidden');
+          } else {
+            punchOutBtnWrap.classList.add('hidden');
+          }
+        }
+        lucide.createIcons();
       } else {
+        empPunchMode = 'IN';
         lockoutCard.classList.add('hidden');
         captureWorkflow.classList.remove('hidden');
         document.getElementById('btn-take-preview').classList.remove('hidden');
         document.getElementById('retake-confirm-bar').classList.add('hidden');
+        updatePunchModeBannerUI();
         fetchLiveGPS();
         startCamera();
       }
@@ -941,7 +1125,8 @@
     function updateCameraStamp() {
       const stamp = document.getElementById('camera-overlay-stamp');
       stamp.classList.remove('hidden');
-      document.getElementById('stamp-name').textContent = `${currentUser.full_name} (${currentUser.emp_code}) | Assigned: ${currentUser.zone_name}`;
+      const actionLabel = empPunchMode === 'OUT' ? 'PUNCH OUT' : 'PUNCH IN';
+      document.getElementById('stamp-name').textContent = `[${actionLabel}] ${currentUser.full_name} (${currentUser.emp_code}) | Area: ${currentUser.zone_name}`;
       document.getElementById('stamp-address').textContent = `Actual Loc: ${currentGPS.address}`;
       document.getElementById('stamp-coords').textContent = `GPS: ${currentGPS.lat?.toFixed(5)}, ${currentGPS.lng?.toFixed(5)}`;
       document.getElementById('stamp-time').textContent = `Time: ${new Date().toLocaleString()}`;
@@ -994,9 +1179,10 @@
 
       ctx.fillStyle = "rgba(0, 0, 0, 0.78)";
       ctx.fillRect(0, canvas.height - 90, canvas.width, 90);
+      const actionTag = empPunchMode === 'OUT' ? 'PUNCH OUT' : 'PUNCH IN';
       ctx.fillStyle = "#fbbf24";
       ctx.font = "bold 12px monospace";
-      ctx.fillText(`${currentUser.full_name} (${currentUser.emp_code}) | Area: ${currentUser.zone_name}`, 10, canvas.height - 66);
+      ctx.fillText(`[${actionTag}] ${currentUser.full_name} (${currentUser.emp_code}) | Area: ${currentUser.zone_name}`, 10, canvas.height - 66);
       ctx.fillStyle = "#6ee7b7";
       ctx.font = "bold 11px monospace";
       ctx.fillText(`Loc: ${(currentGPS.address || '').substring(0, 56)}`, 10, canvas.height - 46);
@@ -1033,11 +1219,13 @@
       submitBtn.disabled = true;
       submitBtn.textContent = "Uploading...";
 
-      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowObj = new Date();
+      const nowTime = nowObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       let publicImageUrl = null;
 
       if (isSupabaseConfigured && pendingPhotoBlob) {
-        const filePath = `${todayStr}/${currentUser.emp_code}_${Date.now()}.jpg`;
+        const suffix = empPunchMode === 'OUT' ? 'OUT' : 'IN';
+        const filePath = `${todayStr}/${currentUser.emp_code}_${suffix}_${Date.now()}.jpg`;
         const { error: upErr } = await supabaseClient.storage
           .from('attendance-selfies')
           .upload(filePath, pendingPhotoBlob, { contentType: 'image/jpeg', upsert: true });
@@ -1048,26 +1236,65 @@
         }
       }
 
-      const record = {
-        emp_code: currentUser.emp_code,
-        full_name: currentUser.full_name,
-        zone_name: currentUser.zone_name,
-        att_date: todayStr,
-        att_time: nowTime,
-        status: 'Present',
-        lat: currentGPS.lat,
-        lng: currentGPS.lng,
-        recorded_address: currentGPS.address,
-        photo_url: publicImageUrl || pendingPhotoBase64,
-        photo_base64: publicImageUrl || pendingPhotoBase64,
-        marked_by: 'Self (Geo-Photo)'
-      };
+      const existingToday = attendanceData.find(a => a.emp_code === currentUser.emp_code && a.att_date === todayStr);
+      let record;
+
+      if (empPunchMode === 'OUT' && existingToday) {
+        const tempRecord = {
+          ...existingToday,
+          punch_out_time: nowTime,
+          punch_out_ts: nowObj.getTime(),
+          punch_out_lat: currentGPS.lat,
+          punch_out_lng: currentGPS.lng,
+          punch_out_address: currentGPS.address,
+          punch_out_photo: publicImageUrl || pendingPhotoBase64
+        };
+        const durInfo = computeWorkDurationInfo(tempRecord);
+        record = {
+          ...tempRecord,
+          work_duration: durInfo.text,
+          work_minutes: durInfo.minutes
+        };
+      } else {
+        record = {
+          emp_code: currentUser.emp_code,
+          full_name: currentUser.full_name,
+          zone_name: currentUser.zone_name,
+          att_date: todayStr,
+          att_time: nowTime,
+          punch_in_ts: nowObj.getTime(),
+          punch_out_time: '-',
+          work_duration: '-',
+          work_minutes: 0,
+          status: 'Present',
+          lat: currentGPS.lat,
+          lng: currentGPS.lng,
+          recorded_address: currentGPS.address,
+          photo_url: publicImageUrl || pendingPhotoBase64,
+          photo_base64: publicImageUrl || pendingPhotoBase64,
+          marked_by: 'Self (Geo-Photo)'
+        };
+      }
 
       if (isSupabaseConfigured) {
         const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
         if (error) {
-          delete record.photo_url;
-          await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+          const safeDbRecord = {
+            emp_code: record.emp_code,
+            full_name: record.full_name,
+            zone_name: record.zone_name,
+            att_date: record.att_date,
+            att_time: record.att_time,
+            status: record.status,
+            lat: record.lat,
+            lng: record.lng,
+            recorded_address: record.punch_out_time && record.punch_out_time !== '-'
+              ? `${record.recorded_address} | Out: ${record.punch_out_time} (${record.work_duration})`
+              : record.recorded_address,
+            photo_base64: record.photo_base64,
+            marked_by: record.marked_by
+          };
+          await supabaseClient.from('attendance_logs').upsert(safeDbRecord, { onConflict: 'emp_code,att_date' });
         }
       }
 
@@ -1078,6 +1305,7 @@
       submitBtn.disabled = false;
       submitBtn.textContent = "Confirm & Submit";
       checkEmployeeDailyLockout();
+      alert(empPunchMode === 'OUT' ? `✔ Punch Out Recorded! Total Worked: ${record.work_duration}` : `✔ Punch In Recorded at ${nowTime}!`);
     }
 
     function setDatePreset(preset) {
@@ -1268,6 +1496,7 @@
           const defaultDesig = emp.role === 'coordinator' ? 'Coordinator' : (isAdmin ? 'Admin' : 'Employee');
           const resolvedStatus = isAdmin ? '-' : (log ? log.status : (holidayNote ? 'Holiday' : 'Absent'));
           const resolvedAddress = isAdmin ? '-' : (log ? (log.recorded_address || 'Location Captured') : (holidayNote ? `🎉 Company Holiday: ${holidayNote}` : 'Not Marked Yet'));
+          const durObj = isAdmin ? { text: '-', minutes: 0, decimalHours: '0.00' } : computeWorkDurationInfo(log);
           rows.push({
             att_date: filterStartDate,
             emp_code: emp.emp_code,
@@ -1278,10 +1507,18 @@
             aadhaar_card: getUserAadhaar(emp),
             status: resolvedStatus,
             att_time: isAdmin ? '-' : (log ? log.att_time : '-'),
+            punch_out_time: isAdmin ? '-' : (log && log.punch_out_time ? log.punch_out_time : '-'),
+            work_duration: durObj.text,
+            work_minutes: durObj.minutes,
+            work_decimal_hours: durObj.decimalHours,
             lat: isAdmin ? null : (log ? log.lat : null),
             lng: isAdmin ? null : (log ? log.lng : null),
+            punch_out_lat: isAdmin ? null : (log ? log.punch_out_lat : null),
+            punch_out_lng: isAdmin ? null : (log ? log.punch_out_lng : null),
             recorded_address: resolvedAddress,
-            photo_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log),
+            punch_out_address: isAdmin ? '-' : (log && log.punch_out_address ? log.punch_out_address : '-'),
+            photo_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, false),
+            photo_out_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, true),
             marked_by: isAdmin ? '-' : (log ? log.marked_by : '-')
           });
         });
@@ -1299,6 +1536,7 @@
           if (currentUser.role !== 'coordinator' && roleFilter !== 'ALL' && empRole !== roleFilter) return;
           const isAdmin = empRole === 'admin';
           const defaultDesig = empRole === 'coordinator' ? 'Coordinator' : (isAdmin ? 'Admin' : 'Employee');
+          const durObj = isAdmin ? { text: '-', minutes: 0, decimalHours: '0.00' } : computeWorkDurationInfo(log);
           rows.push({
             att_date: log.att_date,
             emp_code: log.emp_code,
@@ -1309,10 +1547,18 @@
             aadhaar_card: getUserAadhaar(emp),
             status: isAdmin ? '-' : log.status,
             att_time: isAdmin ? '-' : (log.att_time || '-'),
+            punch_out_time: isAdmin ? '-' : (log.punch_out_time || '-'),
+            work_duration: durObj.text,
+            work_minutes: durObj.minutes,
+            work_decimal_hours: durObj.decimalHours,
             lat: isAdmin ? null : log.lat,
             lng: isAdmin ? null : log.lng,
+            punch_out_lat: isAdmin ? null : log.punch_out_lat,
+            punch_out_lng: isAdmin ? null : log.punch_out_lng,
             recorded_address: isAdmin ? '-' : (log.recorded_address || 'Location Captured'),
-            photo_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log),
+            punch_out_address: isAdmin ? '-' : (log.punch_out_address || '-'),
+            photo_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, false),
+            photo_out_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, true),
             marked_by: isAdmin ? '-' : (log.marked_by || 'Self')
           });
         });
@@ -1362,6 +1608,7 @@
         const actionCellHTML = isAdminRow
           ? `<span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">-</span>`
           : `<button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded font-bold text-[11px]">Present</button>
+             <button onclick="manualMarkPunchOut('${r.emp_code}', '${r.att_date}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded font-bold text-[11px]" title="Mark Punch Out & Calculate Duration">Punch Out</button>
              <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Leave')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded font-bold text-[11px]">Leave</button>
              <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-1 rounded font-bold text-[11px]">Absent</button>`;
 
@@ -1371,27 +1618,50 @@
           ? `<span class="inline-block bg-purple-100 text-purple-800 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded mr-1">Admin</span>`
           : `<span class="inline-block bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded mr-1">Emp</span>`;
 
+        let punchTimingHTML = `<span class="text-slate-400">-</span>`;
+        if (!isAdminRow && r.att_time && r.att_time !== '-') {
+          const outBadge = r.punch_out_time && r.punch_out_time !== '-'
+            ? `<div class="text-[11px] font-bold text-rose-700">🔴 Out: ${r.punch_out_time}</div>`
+            : `<div class="text-[10px] font-semibold text-amber-600">⏳ Working (Not Punched Out)</div>`;
+          const durBadge = r.work_duration && r.work_duration !== '-'
+            ? `<span class="inline-block mt-1 bg-indigo-100 text-indigo-900 border border-indigo-300 text-[10px] font-extrabold px-2 py-0.5 rounded-md">⏱️ ${r.work_duration} (${r.work_decimal_hours} hrs)</span>`
+            : '';
+          punchTimingHTML = `
+            <div class="text-[11px] font-bold text-emerald-700">🟢 In: ${r.att_time}</div>
+            ${outBadge}
+            ${durBadge}
+          `;
+        }
+
         let recordedLocationHTML = `<span class="text-slate-400">${r.recorded_address}</span>`;
         if (!isAdminRow && r.lat && r.lng) {
           const mapUrl = `https://www.google.com/maps?q=${r.lat},${r.lng}`;
+          const outLocLine = r.punch_out_address && r.punch_out_address !== '-'
+            ? `<div class="text-[11px] font-semibold text-rose-800 mt-1">🔴 Out Loc: ${r.punch_out_address}</div>`
+            : '';
           recordedLocationHTML = `
-            <div class="font-bold text-slate-800">${r.att_time} — ${r.recorded_address}</div>
+            <div class="font-bold text-slate-800">🟢 In Loc: ${r.recorded_address}</div>
             <a href="${mapUrl}" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-extrabold mt-0.5">
               📍 Open in Google Maps (${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}) ↗
             </a>
+            ${outLocLine}
           `;
         } else if (!isAdminRow && r.att_time !== '-') {
-          recordedLocationHTML = `<span class="font-semibold text-slate-600">${r.att_time} (Marked by ${r.marked_by})</span>`;
+          recordedLocationHTML = `<span class="font-semibold text-slate-600">${r.recorded_address} (Marked by ${r.marked_by})</span>`;
         }
 
-        const photoCell = isAdminRow
-          ? `<span class="text-slate-400">-</span>`
-          : r.photo_resolved
-          ? `<div class="flex items-center gap-1.5">
-               <button onclick="viewPhoto('${r.emp_code}', '${r.att_date}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-lg font-bold text-[11px]">📸 Preview</button>
-               <a href="${r.photo_resolved}" target="_blank" class="text-[11px] text-indigo-600 font-bold hover:underline">🔗 Open</a>
-             </div>`
-          : `<span class="text-slate-400">No Photo</span>`;
+        let photoCell = `<span class="text-slate-400">No Photo</span>`;
+        if (isAdminRow) {
+          photoCell = `<span class="text-slate-400">-</span>`;
+        } else if (r.photo_resolved || r.photo_out_resolved) {
+          const inBtn = r.photo_resolved
+            ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}', false)" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-1 rounded-lg font-bold text-[10px]">📸 In</button>`
+            : '';
+          const outBtn = r.photo_out_resolved
+            ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}', true)" class="bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 px-2 py-1 rounded-lg font-bold text-[10px]">📸 Out</button>`
+            : '';
+          photoCell = `<div class="flex flex-wrap items-center gap-1">${inBtn}${outBtn}</div>`;
+        }
 
         rowsHTML += `
           <tr class="hover:bg-slate-50">
@@ -1406,6 +1676,7 @@
             <td class="py-2.5 px-3"><span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">${r.zone_name}</span></td>
             <td class="py-2.5 px-3 font-mono text-xs text-slate-700">${r.aadhaar_card}</td>
             <td class="py-2.5 px-3">${statusCellHTML}</td>
+            <td class="py-2.5 px-3 whitespace-nowrap">${punchTimingHTML}</td>
             <td class="py-2.5 px-3 max-w-xs">${recordedLocationHTML}</td>
             <td class="py-2.5 px-3">${photoCell}</td>
             <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
@@ -1415,7 +1686,7 @@
         `;
       });
 
-      document.getElementById('attendance-table-body').innerHTML = rowsHTML || `<tr><td colspan="9" class="py-6 text-center text-slate-400 font-bold">Please select an area, choose a Role filter, or type in the Search bar to view records.</td></tr>`;
+      document.getElementById('attendance-table-body').innerHTML = rowsHTML || `<tr><td colspan="10" class="py-6 text-center text-slate-400 font-bold">Please select an area, choose a Role filter, or type in the Search bar to view records.</td></tr>`;
       document.getElementById('stat-total').textContent = rows.length;
       document.getElementById('stat-present').textContent = presentCount;
       document.getElementById('stat-absent').textContent = absentCount;
@@ -1536,14 +1807,20 @@
       if (currentUser.role === 'coordinator' && !canCoordinatorAccessEmployee(emp)) return;
 
       const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
-      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowObj = new Date();
+      const nowTime = nowObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       const record = {
+        ...(existingLog || {}),
         emp_code: emp.emp_code,
         full_name: emp.full_name,
         zone_name: emp.zone_name,
         att_date: targetDate,
-        att_time: existingLog ? existingLog.att_time : nowTime,
+        att_time: newStatus === 'Present' ? (existingLog && existingLog.att_time && existingLog.att_time !== '-' ? existingLog.att_time : nowTime) : '-',
+        punch_in_ts: newStatus === 'Present' ? (existingLog?.punch_in_ts || nowObj.getTime()) : null,
+        punch_out_time: newStatus === 'Present' ? (existingLog?.punch_out_time || '-') : '-',
+        work_duration: newStatus === 'Present' ? (existingLog?.work_duration || '-') : '-',
+        work_minutes: newStatus === 'Present' ? (existingLog?.work_minutes || 0) : 0,
         status: newStatus,
         lat: existingLog ? existingLog.lat : null,
         lng: existingLog ? existingLog.lng : null,
@@ -1553,12 +1830,80 @@
       };
 
       if (isSupabaseConfigured) {
-        await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+        const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+        if (error) {
+          const fallbackRec = {
+            emp_code: record.emp_code,
+            full_name: record.full_name,
+            zone_name: record.zone_name,
+            att_date: record.att_date,
+            att_time: record.att_time,
+            status: record.status,
+            lat: record.lat,
+            lng: record.lng,
+            recorded_address: record.recorded_address,
+            photo_base64: record.photo_base64,
+            marked_by: record.marked_by
+          };
+          await supabaseClient.from('attendance_logs').upsert(fallbackRec, { onConflict: 'emp_code,att_date' });
+        }
       }
       attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
       attendanceData.unshift(record);
       saveLocalFallback();
       renderDashboard();
+    }
+
+    async function manualMarkPunchOut(empCode, targetDate) {
+      const emp = usersData.find(u => u.emp_code === empCode);
+      if (!emp || emp.role === 'admin') return;
+      if (currentUser.role === 'coordinator' && !canCoordinatorAccessEmployee(emp)) return;
+
+      const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
+      if (!existingLog || existingLog.status !== 'Present' || !existingLog.att_time || existingLog.att_time === '-') {
+        return alert("Please mark the staff member Present (Punch In) first before marking Punch Out.");
+      }
+
+      const nowObj = new Date();
+      const nowTime = nowObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const updatedTemp = {
+        ...existingLog,
+        punch_out_time: nowTime,
+        punch_out_ts: nowObj.getTime(),
+        punch_out_address: existingLog.punch_out_address || `Marked Punch Out by ${currentUser.full_name}`
+      };
+      const durInfo = computeWorkDurationInfo(updatedTemp);
+      const record = {
+        ...updatedTemp,
+        work_duration: durInfo.text,
+        work_minutes: durInfo.minutes
+      };
+
+      if (isSupabaseConfigured) {
+        const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+        if (error) {
+          const fallbackRec = {
+            emp_code: record.emp_code,
+            full_name: record.full_name,
+            zone_name: record.zone_name,
+            att_date: record.att_date,
+            att_time: record.att_time,
+            status: record.status,
+            lat: record.lat,
+            lng: record.lng,
+            recorded_address: `${record.recorded_address} | Out: ${record.punch_out_time} (${record.work_duration})`,
+            photo_base64: record.photo_base64,
+            marked_by: record.marked_by
+          };
+          await supabaseClient.from('attendance_logs').upsert(fallbackRec, { onConflict: 'emp_code,att_date' });
+        }
+      }
+
+      attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
+      attendanceData.unshift(record);
+      saveLocalFallback();
+      renderDashboard();
+      alert(`✔ Punch Out marked for ${emp.full_name} at ${nowTime} (Duration: ${durInfo.text})`);
     }
 
     let profCalYear = new Date().getFullYear();
@@ -1843,12 +2188,15 @@
         .filter(a => a.emp_code === activeProfileEmpCode && a.att_date >= startD && a.att_date <= endD)
         .sort((a, b) => b.att_date.localeCompare(a.att_date));
 
-      let p = 0, a = 0, l = 0, h = 0;
+      let p = 0, a = 0, l = 0, h = 0, totalPeriodMinutes = 0;
       const historyRows = empHistory.map(log => {
         if (log.status === 'Present') p++;
         else if (log.status === 'Leave') l++;
         else if (log.status === 'Holiday') h++;
         else a++;
+
+        const durInfo = computeWorkDurationInfo(log);
+        totalPeriodMinutes += (durInfo.minutes || 0);
 
         const badgeClass = log.status === 'Present'
           ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
@@ -1858,18 +2206,24 @@
           ? 'bg-purple-100 text-purple-800 border-purple-300'
           : 'bg-rose-100 text-rose-800 border-rose-300';
 
-        const imgUrl = resolveAccessiblePhotoUrl(log);
-        const photoBtn = imgUrl
-          ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}')" class="text-blue-600 font-bold hover:underline">📸 View</button>`
-          : `-`;
+        const inImgUrl = resolveAccessiblePhotoUrl(log, false);
+        const outImgUrl = resolveAccessiblePhotoUrl(log, true);
+        let photoBtn = `-`;
+        if (inImgUrl || outImgUrl) {
+          const b1 = inImgUrl ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}', false)" class="text-emerald-700 font-bold hover:underline mr-1">📸In</button>` : '';
+          const b2 = outImgUrl ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}', true)" class="text-rose-700 font-bold hover:underline">📸Out</button>` : '';
+          photoBtn = `${b1}${b2}`;
+        }
 
         return `
           <tr class="hover:bg-slate-50">
-            <td class="py-2 px-3 font-mono font-bold">${log.att_date}</td>
-            <td class="py-2 px-3">${log.att_time}</td>
-            <td class="py-2 px-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badgeClass}">${log.status}</span></td>
-            <td class="py-2 px-3">${log.recorded_address || 'Captured'}</td>
-            <td class="py-2 px-3">${photoBtn}</td>
+            <td class="py-2 px-2 font-mono font-bold">${log.att_date}</td>
+            <td class="py-2 px-2 text-emerald-700 font-bold">${log.att_time || '-'}</td>
+            <td class="py-2 px-2 text-rose-700 font-bold">${log.punch_out_time || '-'}</td>
+            <td class="py-2 px-2 font-extrabold text-indigo-800">${durInfo.text}</td>
+            <td class="py-2 px-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badgeClass}">${log.status}</span></td>
+            <td class="py-2 px-2">${log.recorded_address || 'Captured'}</td>
+            <td class="py-2 px-2 whitespace-nowrap">${photoBtn}</td>
           </tr>
         `;
       }).join('');
@@ -1879,7 +2233,13 @@
       document.getElementById('prof-stat-l').textContent = l;
       const statH = document.getElementById('prof-stat-h');
       if (statH) statH.textContent = h;
-      document.getElementById('prof-history-tbody').innerHTML = historyRows || `<tr><td colspan="5" class="py-5 text-center text-slate-400">No records found for this date range.</td></tr>`;
+      const statHoursEl = document.getElementById('prof-stat-hours');
+      if (statHoursEl) {
+        const totH = Math.floor(totalPeriodMinutes / 60);
+        const totM = totalPeriodMinutes % 60;
+        statHoursEl.textContent = `${totH}h ${totM}m (${(totalPeriodMinutes / 60).toFixed(2)} hrs)`;
+      }
+      document.getElementById('prof-history-tbody').innerHTML = historyRows || `<tr><td colspan="7" class="py-5 text-center text-slate-400">No records found for this date range.</td></tr>`;
     }
 
     function closeProfileModal() {
@@ -1900,16 +2260,25 @@
         "Project Area",
         "Aadhaar Card",
         "Status",
-        "Punch Time",
-        "Live Street Address",
-        "Photo Direct Link"
+        "Punch In Time",
+        "Punch Out Time",
+        "Total Duration (Hrs & Mins)",
+        "Total Duration (Decimal Hours for Accounts/Pay)",
+        "Punch In Location",
+        "Punch Out Location",
+        "Punch In Photo Link",
+        "Punch Out Photo Link"
       ];
       const csvLines = [headers.join(",")];
+      let grandTotalMinutes = 0;
 
       rows.forEach(r => {
-        const directPhotoLink = r.photo_resolved && r.photo_resolved.startsWith('http') ? r.photo_resolved : "";
+        const directPhotoInLink = r.photo_resolved && r.photo_resolved.startsWith('http') ? r.photo_resolved : "";
+        const directPhotoOutLink = r.photo_out_resolved && r.photo_out_resolved.startsWith('http') ? r.photo_out_resolved : "";
         const rawAadhaar = (r.aadhaar_card || '').toString().replace(/"/g, '""');
         const excelSafeAadhaar = /^\d+$/.test(rawAadhaar.replace(/\s+/g, '')) ? `\t${rawAadhaar}` : rawAadhaar;
+
+        grandTotalMinutes += (Number(r.work_minutes) || 0);
 
         csvLines.push([
           r.att_date,
@@ -1920,11 +2289,38 @@
           `"${(r.zone_name || '').replace(/"/g, '""')}"`,
           `"${excelSafeAadhaar}"`,
           r.status,
-          `"${r.att_time}"`,
+          `"${r.att_time || '-'}"`,
+          `"${r.punch_out_time || '-'}"`,
+          `"${r.work_duration || '-'}"`,
+          `"${r.work_decimal_hours || '0.00'}"`,
           `"${(r.recorded_address || '').replace(/"/g, '""')}"`,
-          `"${directPhotoLink}"`
+          `"${(r.punch_out_address || '-').replace(/"/g, '""')}"`,
+          `"${directPhotoInLink}"`,
+          `"${directPhotoOutLink}"`
         ].join(","));
       });
+
+      const totalHrs = Math.floor(grandTotalMinutes / 60);
+      const totalMins = grandTotalMinutes % 60;
+      const totalDecimalHrs = (grandTotalMinutes / 60).toFixed(2);
+      csvLines.push([
+        "TOTAL WORKED DURATION",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        `"${totalHrs}h ${totalMins}m"`,
+        `"${totalDecimalHrs}"`,
+        "",
+        "",
+        "",
+        ""
+      ].join(","));
 
       const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -2193,18 +2589,24 @@
         : 'px-4 py-2 text-xs font-extrabold rounded-xl text-slate-600 hover:text-slate-900';
     }
 
-    function viewPhoto(empCode, targetDate = todayStr) {
+    function viewPhoto(empCode, targetDate = todayStr, isPunchOut = false) {
       if (currentUser?.role === 'coordinator') {
         const emp = usersData.find(u => u.emp_code === empCode);
         if (!canCoordinatorAccessEmployee(emp)) return;
       }
       const log = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
-      const imgUrl = resolveAccessiblePhotoUrl(log);
+      const imgUrl = resolveAccessiblePhotoUrl(log, isPunchOut);
       if (!imgUrl) return;
+      const punchLabel = isPunchOut ? 'PUNCH OUT' : 'PUNCH IN';
+      const timeVal = isPunchOut ? (log.punch_out_time || '-') : (log.att_time || '-');
+      const addrVal = isPunchOut ? (log.punch_out_address || log.recorded_address || 'GPS Captured') : (log.recorded_address || 'GPS Captured');
+      const latVal = isPunchOut ? (log.punch_out_lat || log.lat) : log.lat;
+      const lngVal = isPunchOut ? (log.punch_out_lng || log.lng) : log.lng;
+
       document.getElementById('modal-img').src = imgUrl;
-      document.getElementById('modal-caption').textContent = `${log.full_name} (${empCode}) — ${log.zone_name} | ${log.att_date} ${log.att_time}`;
-      document.getElementById('modal-address').textContent = `📍 Recorded Location: ${log.recorded_address || 'GPS Captured'}`;
-      document.getElementById('modal-map-link').href = `https://www.google.com/maps?q=${log.lat},${log.lng}`;
+      document.getElementById('modal-caption').textContent = `[${punchLabel}] ${log.full_name} (${empCode}) — ${log.zone_name} | ${log.att_date} ${timeVal}`;
+      document.getElementById('modal-address').textContent = `📍 Recorded Location: ${addrVal}`;
+      document.getElementById('modal-map-link').href = `https://www.google.com/maps?q=${latVal},${lngVal}`;
       document.getElementById('modal-direct-img-link').href = imgUrl;
       document.getElementById('photo-modal').classList.remove('hidden');
     }
