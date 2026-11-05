@@ -701,12 +701,14 @@
 
       localStorage.removeItem('geo_zones_v3');
 
-      if (localStorage.getItem('geo_users_v6')) usersData = JSON.parse(localStorage.getItem('geo_users_v6'));
-      if (localStorage.getItem('geo_att_v6')) attendanceData = JSON.parse(localStorage.getItem('geo_att_v6'));
-      if (localStorage.getItem('geo_holidays_v6')) companyHolidays = JSON.parse(localStorage.getItem('geo_holidays_v6'));
-      if (localStorage.getItem('geo_zones_v6')) {
-        zonesData = JSON.parse(localStorage.getItem('geo_zones_v6')).filter(z => !isPanIndiaZone(z.zone_name));
-      }
+      try {
+        if (localStorage.getItem('geo_users_v6')) usersData = JSON.parse(localStorage.getItem('geo_users_v6'));
+        if (localStorage.getItem('geo_att_v6')) attendanceData = JSON.parse(localStorage.getItem('geo_att_v6')).map(hydrateAttendanceLog);
+        if (localStorage.getItem('geo_holidays_v6')) companyHolidays = JSON.parse(localStorage.getItem('geo_holidays_v6'));
+        if (localStorage.getItem('geo_zones_v6')) {
+          zonesData = JSON.parse(localStorage.getItem('geo_zones_v6')).filter(z => !isPanIndiaZone(z.zone_name));
+        }
+      } catch (e) {}
 
       if (!isSupabaseConfigured) {
         document.getElementById('demo-mode-banner').classList.remove('hidden');
@@ -761,18 +763,117 @@
       return null;
     }
 
+    // Hydrates Punch Out fields from standard Supabase columns (att_time & recorded_address)
+    // so Admin & Coordinator ALWAYS see Employee Punch Out across devices without needing extra DB columns!
+    function hydrateAttendanceLog(rawLog) {
+      if (!rawLog) return rawLog;
+      const log = { ...rawLog };
+
+      // 1. Check if att_time contains combined "IN -> OUT" format (e.g. "09:30 AM -> 06:15 PM")
+      if (typeof log.att_time === 'string' && log.att_time.includes('->')) {
+        const parts = log.att_time.split('->').map(s => s.trim());
+        log.att_time = parts[0] || '-';
+        if (!log.punch_out_time || log.punch_out_time === '-') {
+          log.punch_out_time = parts[1] || '-';
+        }
+      }
+
+      // 2. Check if recorded_address contains embedded [PUNCH_OUT_META:{...}] or legacy "| Out:"
+      if (typeof log.recorded_address === 'string') {
+        const metaIdx = log.recorded_address.indexOf(' [PUNCH_OUT_META:');
+        if (metaIdx !== -1) {
+          const cleanAddr = log.recorded_address.substring(0, metaIdx).trim();
+          const metaPart = log.recorded_address.substring(metaIdx + 17);
+          const endBracket = metaPart.lastIndexOf(']');
+          if (endBracket !== -1) {
+            try {
+              const meta = JSON.parse(metaPart.substring(0, endBracket));
+              if (meta.outTime && (!log.punch_out_time || log.punch_out_time === '-')) log.punch_out_time = meta.outTime;
+              if (meta.dur && (!log.work_duration || log.work_duration === '-')) log.work_duration = meta.dur;
+              if (meta.mins !== undefined && !log.work_minutes) log.work_minutes = Number(meta.mins) || 0;
+              if (meta.outAddr && (!log.punch_out_address || log.punch_out_address === '-')) log.punch_out_address = meta.outAddr;
+              if (meta.outLat && !log.punch_out_lat) log.punch_out_lat = meta.outLat;
+              if (meta.outLng && !log.punch_out_lng) log.punch_out_lng = meta.outLng;
+              if (meta.outPhoto && !log.punch_out_photo) log.punch_out_photo = meta.outPhoto;
+              if (meta.inTs && !log.punch_in_ts) log.punch_in_ts = meta.inTs;
+              if (meta.outTs && !log.punch_out_ts) log.punch_out_ts = meta.outTs;
+            } catch (e) {}
+          }
+          log.recorded_address = cleanAddr;
+        } else if (log.recorded_address.includes(' | Out: ')) {
+          const splitPipe = log.recorded_address.split(' | Out: ');
+          log.recorded_address = splitPipe[0].trim();
+          const rest = splitPipe[1] || '';
+          const m = rest.match(/^([^()]+?)(?:\s*\(([^)]+)\))?$/);
+          if (m) {
+            if (!log.punch_out_time || log.punch_out_time === '-') log.punch_out_time = m[1].trim();
+            if (m[2] && (!log.work_duration || log.work_duration === '-')) log.work_duration = m[2].trim();
+          }
+        }
+      }
+
+      const durObj = computeWorkDurationInfo(log);
+      log.work_duration = durObj.text;
+      log.work_minutes = durObj.minutes;
+      return log;
+    }
+
+    // Packs Punch Out metadata into standard Supabase columns so upsert NEVER drops Punch Out info
+    function buildSupabaseCompatibleRecord(record) {
+      const hasOut = Boolean(record.punch_out_time && record.punch_out_time !== '-');
+      const cleanInTime = (record.att_time || '-').split('->')[0].trim();
+      const cleanInAddr = (record.recorded_address || '').split(' [PUNCH_OUT_META:')[0].split(' | Out: ')[0].trim();
+
+      let packedAddress = cleanInAddr;
+      let packedTime = cleanInTime;
+
+      if (hasOut) {
+        packedTime = `${cleanInTime} -> ${record.punch_out_time}`;
+        const metaObj = {
+          outTime: record.punch_out_time,
+          dur: record.work_duration || '-',
+          mins: record.work_minutes || 0,
+          outAddr: record.punch_out_address || cleanInAddr,
+          outLat: record.punch_out_lat || record.lat || null,
+          outLng: record.punch_out_lng || record.lng || null,
+          inTs: record.punch_in_ts || null,
+          outTs: record.punch_out_ts || null
+        };
+        // If punch_out_photo is an HTTP URL (Supabase Storage), include it in metadata
+        if (record.punch_out_photo && record.punch_out_photo.startsWith('http')) {
+          metaObj.outPhoto = record.punch_out_photo;
+        }
+        packedAddress = `${cleanInAddr} [PUNCH_OUT_META:${JSON.stringify(metaObj)}]`;
+      } else if (record.punch_in_ts) {
+        const metaObj = { inTs: record.punch_in_ts };
+        packedAddress = `${cleanInAddr} [PUNCH_OUT_META:${JSON.stringify(metaObj)}]`;
+      }
+
+      return {
+        emp_code: record.emp_code,
+        full_name: record.full_name,
+        zone_name: record.zone_name,
+        att_date: record.att_date,
+        att_time: packedTime,
+        status: record.status,
+        lat: record.lat,
+        lng: record.lng,
+        recorded_address: packedAddress,
+        photo_base64: record.photo_base64 || record.photo_url || null,
+        marked_by: record.marked_by || 'Self (Geo-Photo)'
+      };
+    }
+
     function computeWorkDurationInfo(log) {
       if (!log) return { text: '-', minutes: 0, decimalHours: '0.00' };
-      if (log.work_duration && log.work_minutes !== undefined) {
-        return {
-          text: log.work_duration,
-          minutes: Number(log.work_minutes) || 0,
-          decimalHours: ((Number(log.work_minutes) || 0) / 60).toFixed(2)
-        };
-      }
+      const inTime = typeof log.att_time === 'string' && log.att_time.includes('->')
+        ? log.att_time.split('->')[0].trim()
+        : log.att_time;
+      const outTime = log.punch_out_time;
+
       if (log.punch_in_ts && log.punch_out_ts) {
         const diffMs = Number(log.punch_out_ts) - Number(log.punch_in_ts);
-        if (diffMs > 0) {
+        if (diffMs >= 0) {
           const totalMins = Math.max(1, Math.round(diffMs / 60000));
           const hrs = Math.floor(totalMins / 60);
           const mins = totalMins % 60;
@@ -783,14 +884,14 @@
           };
         }
       }
-      const inTime = log.att_time;
-      const outTime = log.punch_out_time;
+
       if (inTime && inTime !== '-' && outTime && outTime !== '-') {
         const inMins = parseTimeStrToMinutes(inTime);
         const outMins = parseTimeStrToMinutes(outTime);
         if (inMins !== null && outMins !== null) {
           let diff = outMins - inMins;
           if (diff < 0) diff += 24 * 60;
+          if (diff === 0) diff = 1; // At least 1 min when punched in and out in the same minute
           const hrs = Math.floor(diff / 60);
           const mins = diff % 60;
           return {
@@ -799,6 +900,15 @@
             decimalHours: (diff / 60).toFixed(2)
           };
         }
+      }
+
+      if (log.work_duration && log.work_duration !== '-' && log.work_minutes !== undefined) {
+        const m = Math.max(1, Number(log.work_minutes) || 0);
+        return {
+          text: log.work_duration,
+          minutes: m,
+          decimalHours: (m / 60).toFixed(2)
+        };
       }
       return { text: '-', minutes: 0, decimalHours: '0.00' };
     }
@@ -840,9 +950,23 @@
           }
           const allowedCodes = new Set(usersData.filter(u => canCoordinatorAccessEmployee(u)).map(u => u.emp_code));
           if (aRes.data) {
-            attendanceData = aRes.data.filter(a => allowedCodes.has(a.emp_code) && normZone(a.zone_name) === normZone(myZone));
+            const localMap = {};
+            attendanceData.forEach(item => { localMap[`${item.emp_code}_${item.att_date}`] = hydrateAttendanceLog(item); });
+            attendanceData = aRes.data
+              .map(r => {
+                const hydrated = hydrateAttendanceLog(r);
+                const localMatch = localMap[`${hydrated.emp_code}_${hydrated.att_date}`];
+                if (localMatch && localMatch.punch_out_time && localMatch.punch_out_time !== '-' && (!hydrated.punch_out_time || hydrated.punch_out_time === '-')) {
+                  return { ...hydrated, ...localMatch };
+                }
+                if (localMatch && localMatch.punch_out_photo && !hydrated.punch_out_photo) {
+                  hydrated.punch_out_photo = localMatch.punch_out_photo;
+                }
+                return hydrated;
+              })
+              .filter(a => allowedCodes.has(a.emp_code) && normZone(a.zone_name) === normZone(myZone));
           } else {
-            attendanceData = attendanceData.filter(a => allowedCodes.has(a.emp_code) && normZone(a.zone_name) === normZone(myZone));
+            attendanceData = attendanceData.map(hydrateAttendanceLog).filter(a => allowedCodes.has(a.emp_code) && normZone(a.zone_name) === normZone(myZone));
           }
           renderDashboard();
         } else {
@@ -855,7 +979,21 @@
             zonesData = zRes.data.filter(z => !isPanIndiaZone(z.zone_name));
           }
           if (uRes.data?.length) usersData = uRes.data;
-          if (aRes.data) attendanceData = aRes.data;
+          if (aRes.data) {
+            const localMap = {};
+            attendanceData.forEach(item => { localMap[`${item.emp_code}_${item.att_date}`] = hydrateAttendanceLog(item); });
+            attendanceData = aRes.data.map(r => {
+              const hydrated = hydrateAttendanceLog(r);
+              const localMatch = localMap[`${hydrated.emp_code}_${hydrated.att_date}`];
+              if (localMatch && localMatch.punch_out_time && localMatch.punch_out_time !== '-' && (!hydrated.punch_out_time || hydrated.punch_out_time === '-')) {
+                return { ...hydrated, ...localMatch };
+              }
+              if (localMatch && localMatch.punch_out_photo && !hydrated.punch_out_photo) {
+                hydrated.punch_out_photo = localMatch.punch_out_photo;
+              }
+              return hydrated;
+            });
+          }
           saveLocalFallback();
           if (currentUser && currentUser.role === 'admin') {
             populateZoneDropdowns();
@@ -879,7 +1017,7 @@
     function handleRefreshAction() {
       const areaSelect = document.getElementById('area-filter-select');
       if (areaSelect && currentUser?.role === 'admin') {
-        areaSelect.value = ""; 
+        areaSelect.value = "ALL"; 
       }
       roleFilterTouched = false;
       const topRoleSel = document.getElementById('global-role-filter');
@@ -1277,24 +1415,20 @@
       }
 
       if (isSupabaseConfigured) {
-        const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+        const dbPayload = buildSupabaseCompatibleRecord(record);
+        const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
         if (error) {
-          const safeDbRecord = {
-            emp_code: record.emp_code,
-            full_name: record.full_name,
-            zone_name: record.zone_name,
-            att_date: record.att_date,
-            att_time: record.att_time,
-            status: record.status,
-            lat: record.lat,
-            lng: record.lng,
-            recorded_address: record.punch_out_time && record.punch_out_time !== '-'
-              ? `${record.recorded_address} | Out: ${record.punch_out_time} (${record.work_duration})`
-              : record.recorded_address,
-            photo_base64: record.photo_base64,
-            marked_by: record.marked_by
-          };
-          await supabaseClient.from('attendance_logs').upsert(safeDbRecord, { onConflict: 'emp_code,att_date' });
+          // Fallback: explicit update if row already exists for emp_code + att_date
+          await supabaseClient
+            .from('attendance_logs')
+            .update({
+              att_time: dbPayload.att_time,
+              status: dbPayload.status,
+              recorded_address: dbPayload.recorded_address,
+              marked_by: dbPayload.marked_by
+            })
+            .eq('emp_code', record.emp_code)
+            .eq('att_date', record.att_date);
         }
       }
 
@@ -1422,8 +1556,8 @@
       const newEmpZone = document.getElementById('new-emp-zone');
       if (currentUser && currentUser.role === 'coordinator') return;
 
-      const prevSelected = areaSelect.value;
-      areaSelect.innerHTML = `<option value="" disabled selected>-- Choose Area --</option><option value="ALL">All Projects</option>`;
+      const prevSelected = areaSelect.value || 'ALL';
+      areaSelect.innerHTML = `<option value="ALL" selected>All Projects</option>`;
       newEmpZone.innerHTML = ``;
       zonesData.filter(z => !isPanIndiaZone(z.zone_name)).forEach(z => {
         areaSelect.innerHTML += `<option value="${z.zone_name}">${z.zone_name}</option>`;
@@ -1431,6 +1565,8 @@
       });
       if (prevSelected && [...areaSelect.options].some(o => o.value === prevSelected)) {
         areaSelect.value = prevSelected;
+      } else {
+        areaSelect.value = 'ALL';
       }
     }
 
@@ -1830,22 +1966,19 @@
       };
 
       if (isSupabaseConfigured) {
-        const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+        const dbPayload = buildSupabaseCompatibleRecord(record);
+        const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
         if (error) {
-          const fallbackRec = {
-            emp_code: record.emp_code,
-            full_name: record.full_name,
-            zone_name: record.zone_name,
-            att_date: record.att_date,
-            att_time: record.att_time,
-            status: record.status,
-            lat: record.lat,
-            lng: record.lng,
-            recorded_address: record.recorded_address,
-            photo_base64: record.photo_base64,
-            marked_by: record.marked_by
-          };
-          await supabaseClient.from('attendance_logs').upsert(fallbackRec, { onConflict: 'emp_code,att_date' });
+          await supabaseClient
+            .from('attendance_logs')
+            .update({
+              att_time: dbPayload.att_time,
+              status: dbPayload.status,
+              recorded_address: dbPayload.recorded_address,
+              marked_by: dbPayload.marked_by
+            })
+            .eq('emp_code', record.emp_code)
+            .eq('att_date', record.att_date);
         }
       }
       attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
@@ -1880,22 +2013,19 @@
       };
 
       if (isSupabaseConfigured) {
-        const { error } = await supabaseClient.from('attendance_logs').upsert(record, { onConflict: 'emp_code,att_date' });
+        const dbPayload = buildSupabaseCompatibleRecord(record);
+        const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
         if (error) {
-          const fallbackRec = {
-            emp_code: record.emp_code,
-            full_name: record.full_name,
-            zone_name: record.zone_name,
-            att_date: record.att_date,
-            att_time: record.att_time,
-            status: record.status,
-            lat: record.lat,
-            lng: record.lng,
-            recorded_address: `${record.recorded_address} | Out: ${record.punch_out_time} (${record.work_duration})`,
-            photo_base64: record.photo_base64,
-            marked_by: record.marked_by
-          };
-          await supabaseClient.from('attendance_logs').upsert(fallbackRec, { onConflict: 'emp_code,att_date' });
+          await supabaseClient
+            .from('attendance_logs')
+            .update({
+              att_time: dbPayload.att_time,
+              status: dbPayload.status,
+              recorded_address: dbPayload.recorded_address,
+              marked_by: dbPayload.marked_by
+            })
+            .eq('emp_code', record.emp_code)
+            .eq('att_date', record.att_date);
         }
       }
 
