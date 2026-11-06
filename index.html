@@ -15,7 +15,7 @@
       -webkit-tap-highlight-color: transparent;
       padding-bottom: env(safe-area-inset-bottom);
     }
-    video {
+    video.mirror-mode {
       transform: scaleX(-1);
       -webkit-transform: scaleX(-1);
     }
@@ -163,13 +163,19 @@
           </div>
 
           <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[4/3] flex items-center justify-center border-2 border-slate-200">
-            <video id="camera-stream" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover hidden"></video>
+            <video id="camera-stream" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover hidden mirror-mode"></video>
             <canvas id="camera-canvas" class="hidden"></canvas>
             <img id="captured-photo" class="w-full h-full object-cover hidden" alt="Captured selfie" />
 
+            <!-- CAMERA SWITCH BUTTON (FRONT <-> BACK) -->
+            <button id="btn-camera-switch" type="button" onclick="switchCameraFacingMode()" title="Switch Front / Back Camera" class="hidden absolute top-2.5 right-2.5 z-20 bg-black/70 hover:bg-black/90 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg border border-white/20 backdrop-blur-sm flex items-center gap-1.5 transition">
+              <i data-lucide="flip-horizontal" class="w-4 h-4 text-amber-300"></i>
+              <span id="camera-facing-label">Front Cam</span>
+            </button>
+
             <div id="camera-placeholder" class="text-center p-6 text-slate-400">
               <i data-lucide="camera" class="w-10 h-10 mx-auto mb-2 opacity-60"></i>
-              <p class="text-xs">Allow Front Camera for Geo-Tagged Attendance</p>
+              <p class="text-xs">Allow Camera for Geo-Tagged Attendance</p>
               <button onclick="startCamera()" class="mt-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-xl">
                 Open Camera
               </button>
@@ -312,7 +318,7 @@
               📋 Attendance & Recorded Google Locations
             </button>
             <button onclick="switchDashTab('tab-employees')" id="btn-tab-employees" class="px-4 py-2 text-xs font-extrabold rounded-xl text-slate-600 hover:text-slate-900">
-              👥 Manage Employees (Add / Edit Profile / Outgoing)
+              👥 Manage Employees (Add / Edit Profile)
             </button>
           </div>
 
@@ -458,9 +464,9 @@
     </div>
   </div>
 
-  <!-- EMPLOYEE PROFILE MODAL (COMPACT SIDE-BY-SIDE LAYOUT, NO SCROLLING NEEDED) -->
+  <!-- EMPLOYEE PROFILE MODAL (COMPACT SIDE-BY-SIDE LAYOUT WITH LIVE GAZETTE & COLOR/REASON SIDE BOX) -->
   <div id="employee-profile-modal" onclick="closeProfileModal()" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-2 sm:p-4">
-    <div class="bg-white rounded-2xl max-w-5xl w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+    <div class="bg-white rounded-2xl max-w-6xl w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
       <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
           <span id="prof-role-badge" class="text-[10px] font-extrabold uppercase bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded">EMPLOYEE PROFILE</span>
@@ -469,7 +475,7 @@
         <button onclick="closeProfileModal()" class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-lg">✕ Close</button>
       </div>
 
-      <div class="p-3.5 space-y-2.5">
+      <div class="p-3.5 space-y-2.5 max-h-[88vh] overflow-y-auto">
         <!-- TOP INFO & SUMMARY ROW -->
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 text-xs">
           <div><p class="text-[9px] font-bold uppercase text-slate-400">Designation</p><p id="prof-designation" class="font-extrabold text-slate-900 truncate"></p></div>
@@ -497,54 +503,104 @@
           </div>
         </div>
 
-        <!-- SIDE-BY-SIDE: COMPACT MINI CALENDAR ON LEFT + ATTENDANCE LOG ON RIGHT -->
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-          <!-- LEFT COLUMN: SHORT COMPACT CALENDAR -->
-          <div class="md:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
+        <!-- 3-COLUMN COMPACT VIEW: CALENDAR + SIDE COLOR & REASON / GAZETTE BOX + ATTENDANCE LOG -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+          <!-- COLUMN 1: ATTENDANCE CALENDAR (WITH TONED-DOWN SUNDAYS & LIVE GAZETTE HOLIDAYS) -->
+          <div class="lg:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-[11px] font-extrabold uppercase text-slate-800">🗓️ Attendance Calendar</span>
+              <span class="text-[11px] font-extrabold uppercase text-slate-800">🗓️ Live Gazette Calendar</span>
               <div class="flex items-center gap-1">
                 <button type="button" onclick="changeProfileCalendarMonth(-1)" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm">◀</button>
-                <span id="prof-cal-month-label" class="text-[11px] font-extrabold text-slate-900 min-w-[95px] text-center"></span>
+                <span id="prof-cal-month-label" class="text-[11px] font-extrabold text-slate-900 min-w-[90px] text-center"></span>
                 <button type="button" onclick="changeProfileCalendarMonth(1)" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm">▶</button>
               </div>
             </div>
 
-            <!-- COLOR LEGEND -->
-            <div class="flex flex-wrap items-center justify-between gap-1 text-[10px] font-bold bg-white px-2 py-1 rounded-lg border border-slate-200">
-              <span class="inline-flex items-center gap-1 text-emerald-800"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-300 border border-emerald-600 inline-block"></span>Present</span>
-              <span class="inline-flex items-center gap-1 text-rose-800"><span class="w-2.5 h-2.5 rounded-sm bg-rose-300 border border-rose-600 inline-block"></span>Absent</span>
-              <span class="inline-flex items-center gap-1 text-amber-800"><span class="w-2.5 h-2.5 rounded-sm bg-amber-300 border border-amber-600 inline-block"></span>Leave</span>
-              <span class="inline-flex items-center gap-1 text-purple-800"><span class="w-2.5 h-2.5 rounded-sm bg-purple-300 border border-purple-600 inline-block"></span>Holiday</span>
+            <!-- DYNAMIC COLOR LEGEND (AUTO-SYNCED WITH CUSTOM COLORS) -->
+            <div class="flex flex-wrap items-center justify-between gap-1 text-[9.5px] font-bold bg-white px-2 py-1 rounded-lg border border-slate-200">
+              <span class="inline-flex items-center gap-1 text-slate-800"><span id="legend-swatch-Present" class="w-2.5 h-2.5 rounded-sm inline-block border border-black/20"></span>Present</span>
+              <span class="inline-flex items-center gap-1 text-slate-800"><span id="legend-swatch-Absent" class="w-2.5 h-2.5 rounded-sm inline-block border border-black/20"></span>Absent</span>
+              <span class="inline-flex items-center gap-1 text-slate-800"><span id="legend-swatch-Leave" class="w-2.5 h-2.5 rounded-sm inline-block border border-black/20"></span>Leave</span>
+              <span class="inline-flex items-center gap-1 text-slate-800"><span id="legend-swatch-Holiday" class="w-2.5 h-2.5 rounded-sm inline-block border border-black/20"></span>Holiday</span>
+              <span class="inline-flex items-center gap-1 text-slate-600"><span id="legend-swatch-Sunday" class="w-2.5 h-2.5 rounded-sm inline-block border border-black/20"></span>Sunday</span>
             </div>
 
-            <!-- ADMIN-ONLY DOUBLE-CLICK HOLIDAY CONTROLS (HIDDEN FOR COORDINATORS) -->
-            <div id="admin-cal-holiday-controls" class="hidden bg-indigo-50/80 border border-indigo-200 rounded-lg p-2 space-y-1.5">
-              <div class="flex items-center justify-between gap-1">
-                <span class="text-[10px] font-extrabold text-indigo-950">⚡ Admin: Double-Click Date to Set / Undo Holiday</span>
-              </div>
-              <div class="grid grid-cols-2 gap-1">
-                <button type="button" id="btn-hol-scope-emp" onclick="setAdminHolidayScope('EMP')" class="text-[10px] font-extrabold py-1 px-2 rounded bg-indigo-600 text-white shadow-sm">
-                  👤 This Employee
-                </button>
-                <button type="button" id="btn-hol-scope-all" onclick="setAdminHolidayScope('ALL')" class="text-[10px] font-extrabold py-1 px-2 rounded bg-white text-slate-700 border border-slate-300">
-                  🏢 Complete Staff
-                </button>
-              </div>
-              <input type="text" id="prof-cal-holiday-note" placeholder="Optional holiday name (e.g. Diwali)" class="w-full px-2 py-1 rounded border border-indigo-200 text-[10px] font-semibold bg-white text-slate-800 focus:outline-none" />
-            </div>
-
-            <!-- COMPACT 7-COLUMN DAY GRID -->
+            <!-- COMPACT 7-COLUMN DAY GRID (Su highlighted subtly as Sunday column) -->
             <div class="grid grid-cols-7 gap-1 text-center text-[9px] font-extrabold uppercase text-slate-400">
-              <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+              <div class="text-rose-400 bg-slate-200/70 rounded py-0.5" title="Sunday (Toned Down)">Su</div>
+              <div class="py-0.5">Mo</div><div class="py-0.5">Tu</div><div class="py-0.5">We</div><div class="py-0.5">Th</div><div class="py-0.5">Fr</div><div class="py-0.5">Sa</div>
             </div>
             <div id="prof-calendar-grid" class="grid grid-cols-7 gap-1 select-none"></div>
+
+            <!-- THIS MONTH'S GAZETTE HOLIDAYS PILL LIST -->
+            <div id="prof-month-gazette-list" class="bg-white border border-slate-200 rounded-lg p-1.5 text-[10px] space-y-1 max-h-20 overflow-y-auto"></div>
           </div>
 
-          <!-- RIGHT COLUMN: HISTORICAL ATTENDANCE LOG TABLE -->
-          <div class="md:col-span-7 flex flex-col">
-            <h4 class="text-[11px] font-extrabold uppercase text-slate-700 mb-1.5">Historical Attendance Log</h4>
-            <div class="border border-slate-200 rounded-xl overflow-x-auto max-h-[285px] overflow-y-auto">
+          <!-- COLUMN 2: SMALL SIDE BOX — SECTION COLOR PICKER + REASON & GAZETTE HOLIDAY EDITOR -->
+          <div class="lg:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2.5 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-1.5">
+              <span class="text-[11px] font-extrabold uppercase text-indigo-950">🎨 Colour & Reason Box</span>
+              <button type="button" onclick="resetSectionColors()" class="text-[9.5px] font-bold text-slate-500 hover:text-rose-600 underline" title="Reset to default colors">Reset</button>
+            </div>
+
+            <!-- CHOOSE COLOUR FOR EACH SECTION -->
+            <div class="bg-white border border-slate-200 rounded-lg p-2 space-y-1.5">
+              <p class="text-[9.5px] font-extrabold uppercase text-slate-400">Choose Section Colour</p>
+              <div class="grid grid-cols-2 gap-1.5 text-[10px] font-bold text-slate-700">
+                <label class="flex items-center justify-between bg-slate-50 px-1.5 py-1 rounded border border-slate-200 cursor-pointer">
+                  <span>Present</span>
+                  <input type="color" id="color-pick-Present" onchange="updateSectionColor('Present', this.value)" class="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0" />
+                </label>
+                <label class="flex items-center justify-between bg-slate-50 px-1.5 py-1 rounded border border-slate-200 cursor-pointer">
+                  <span>Absent</span>
+                  <input type="color" id="color-pick-Absent" onchange="updateSectionColor('Absent', this.value)" class="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0" />
+                </label>
+                <label class="flex items-center justify-between bg-slate-50 px-1.5 py-1 rounded border border-slate-200 cursor-pointer">
+                  <span>Leave</span>
+                  <input type="color" id="color-pick-Leave" onchange="updateSectionColor('Leave', this.value)" class="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0" />
+                </label>
+                <label class="flex items-center justify-between bg-slate-50 px-1.5 py-1 rounded border border-slate-200 cursor-pointer">
+                  <span>Holiday</span>
+                  <input type="color" id="color-pick-Holiday" onchange="updateSectionColor('Holiday', this.value)" class="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0" />
+                </label>
+                <label class="col-span-2 flex items-center justify-between bg-slate-100/80 px-1.5 py-1 rounded border border-slate-200 cursor-pointer">
+                  <span>Sunday (Toned Down)</span>
+                  <input type="color" id="color-pick-Sunday" onchange="updateSectionColor('Sunday', this.value)" class="w-4 h-4 rounded cursor-pointer border-0 bg-transparent p-0" />
+                </label>
+              </div>
+            </div>
+
+            <!-- MENTION REASON & APPLY TO SELECTED DATE / GAZETTE -->
+            <div class="bg-white border border-slate-200 rounded-lg p-2 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <p class="text-[9.5px] font-extrabold uppercase text-slate-400">📝 Mention Reason / Edit Date</p>
+                <span id="side-selected-date-badge" class="text-[9.5px] font-mono font-extrabold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">Select Date</span>
+              </div>
+              <input type="date" id="side-reason-date" onchange="onSideDateInputChanged(this.value)" class="w-full px-2 py-1 rounded border border-slate-300 text-[10px] font-bold bg-slate-50 text-slate-800" />
+              <div class="grid grid-cols-2 gap-1">
+                <select id="side-reason-status" class="px-1.5 py-1 rounded border border-slate-300 text-[10px] font-bold bg-slate-50 text-slate-800">
+                  <option value="Holiday">Holiday (H)</option>
+                  <option value="Leave">Leave (L)</option>
+                  <option value="Present">Present (P)</option>
+                  <option value="Absent">Absent (A)</option>
+                  <option value="CLEAR">Clear / Reset</option>
+                </select>
+                <select id="side-reason-scope" class="px-1.5 py-1 rounded border border-slate-300 text-[10px] font-bold bg-slate-50 text-slate-800">
+                  <option value="EMP">This Staff</option>
+                  <option value="GAZETTE">Live Gazette (All)</option>
+                </select>
+              </div>
+              <input type="text" id="side-reason-text" placeholder="Mention reason (e.g. Govt Holiday / Sick Leave)" class="w-full px-2 py-1.5 rounded border border-slate-300 text-[10px] font-semibold bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-600" />
+              <button type="button" onclick="applySideBoxReasonAndStatus()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-1.5 px-2 rounded-lg text-[10px] shadow-sm transition">
+                ✔ Save Reason & Update Calendar
+              </button>
+            </div>
+          </div>
+
+          <!-- COLUMN 3: HISTORICAL ATTENDANCE LOG TABLE (WITH REASON COLUMN) -->
+          <div class="lg:col-span-5 flex flex-col">
+            <h4 class="text-[11px] font-extrabold uppercase text-slate-700 mb-1.5">Historical Attendance Log & Reasons</h4>
+            <div class="border border-slate-200 rounded-xl overflow-x-auto max-h-[320px] overflow-y-auto">
               <table class="w-full text-left border-collapse text-xs">
                 <thead class="sticky top-0 z-10">
                   <tr class="bg-slate-100 border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-500">
@@ -553,7 +609,7 @@
                     <th class="py-2 px-2">Punch Out</th>
                     <th class="py-2 px-2">Duration</th>
                     <th class="py-2 px-2">Status</th>
-                    <th class="py-2 px-2">Recorded Location</th>
+                    <th class="py-2 px-2">Reason / Recorded Location</th>
                     <th class="py-2 px-2">Photo</th>
                   </tr>
                 </thead>
@@ -687,10 +743,64 @@
     ];
 
     let attendanceData = [];
-    let companyHolidays = {};
+    // Pre-loaded Live Indian Government Gazetted Holidays (2025, 2026, 2027) — Fully editable by Admin!
+    const DEFAULT_GAZETTE_HOLIDAYS = {
+      "2025-01-26": "Republic Day (Gazetted)",
+      "2025-02-26": "Maha Shivaratri (Gazetted)",
+      "2025-03-14": "Holi (Gazetted)",
+      "2025-03-31": "Id-ul-Fitr (Gazetted)",
+      "2025-04-10": "Mahavir Jayanti (Gazetted)",
+      "2025-04-18": "Good Friday (Gazetted)",
+      "2025-05-12": "Buddha Purnima (Gazetted)",
+      "2025-06-07": "Id-ul-Zuha / Bakrid (Gazetted)",
+      "2025-07-06": "Muharram (Gazetted)",
+      "2025-08-15": "Independence Day (Gazetted)",
+      "2025-08-16": "Janmashtami (Gazetted)",
+      "2025-09-05": "Milad-un-Nabi (Gazetted)",
+      "2025-10-02": "Mahatma Gandhi Jayanti / Dussehra (Gazetted)",
+      "2025-10-20": "Diwali / Deepavali (Gazetted)",
+      "2025-11-05": "Guru Nanak's Birthday (Gazetted)",
+      "2025-12-25": "Christmas Day (Gazetted)",
+      "2026-01-26": "Republic Day (Gazetted)",
+      "2026-02-15": "Maha Shivaratri (Gazetted)",
+      "2026-03-04": "Holi (Gazetted)",
+      "2026-03-21": "Id-ul-Fitr (Gazetted)",
+      "2026-03-26": "Ram Navami (Gazetted)",
+      "2026-03-31": "Mahavir Jayanti (Gazetted)",
+      "2026-04-03": "Good Friday (Gazetted)",
+      "2026-05-01": "Buddha Purnima (Gazetted)",
+      "2026-05-27": "Id-ul-Zuha / Bakrid (Gazetted)",
+      "2026-06-26": "Muharram (Gazetted)",
+      "2026-08-15": "Independence Day (Gazetted)",
+      "2026-08-26": "Milad-un-Nabi (Gazetted)",
+      "2026-09-04": "Janmashtami (Gazetted)",
+      "2026-10-02": "Mahatma Gandhi Jayanti (Gazetted)",
+      "2026-10-20": "Dussehra (Gazetted)",
+      "2026-11-08": "Diwali / Deepavali (Gazetted)",
+      "2026-11-24": "Guru Nanak's Birthday (Gazetted)",
+      "2026-12-25": "Christmas Day (Gazetted)",
+      "2027-01-26": "Republic Day (Gazetted)",
+      "2027-03-22": "Holi (Gazetted)",
+      "2027-08-15": "Independence Day (Gazetted)",
+      "2027-10-02": "Mahatma Gandhi Jayanti (Gazetted)",
+      "2027-10-29": "Diwali / Deepavali (Gazetted)",
+      "2027-12-25": "Christmas Day (Gazetted)"
+    };
+    let companyHolidays = { ...DEFAULT_GAZETTE_HOLIDAYS };
+
+    const DEFAULT_SECTION_COLORS = {
+      Present: '#a7f3d0', // Soft Emerald
+      Absent: '#fecdd3',  // Soft Rose
+      Leave: '#fde68a',   // Soft Amber
+      Holiday: '#e9d5ff', // Soft Purple
+      Sunday: '#e2e8f0'   // Toned-down Slate/Warm Gray for Sundays
+    };
+    let sectionColors = { ...DEFAULT_SECTION_COLORS };
+    let selectedSideCalDate = todayStr;
     let currentUser = null;
     let currentGPS = { lat: null, lng: null, address: "Fetching street address..." };
     let cameraStream = null;
+    let currentCameraFacing = 'user'; // 'user' (Front) or 'environment' (Back)
     let pendingPhotoBase64 = null;
     let pendingPhotoBlob = null;
 
@@ -704,7 +814,17 @@
       try {
         if (localStorage.getItem('geo_users_v6')) usersData = JSON.parse(localStorage.getItem('geo_users_v6'));
         if (localStorage.getItem('geo_att_v6')) attendanceData = JSON.parse(localStorage.getItem('geo_att_v6')).map(hydrateAttendanceLog);
-        if (localStorage.getItem('geo_holidays_v6')) companyHolidays = JSON.parse(localStorage.getItem('geo_holidays_v6'));
+        if (localStorage.getItem('geo_holidays_v6')) {
+          const savedHol = JSON.parse(localStorage.getItem('geo_holidays_v6'));
+          companyHolidays = { ...DEFAULT_GAZETTE_HOLIDAYS, ...savedHol };
+          // Support deleted default gazette holidays marked as null/""
+          Object.keys(companyHolidays).forEach(k => {
+            if (!companyHolidays[k]) delete companyHolidays[k];
+          });
+        }
+        if (localStorage.getItem('geo_sec_colors_v6')) {
+          sectionColors = { ...DEFAULT_SECTION_COLORS, ...JSON.parse(localStorage.getItem('geo_sec_colors_v6')) };
+        }
         if (localStorage.getItem('geo_zones_v6')) {
           zonesData = JSON.parse(localStorage.getItem('geo_zones_v6')).filter(z => !isPanIndiaZone(z.zone_name));
         }
@@ -797,6 +917,7 @@
               if (meta.outPhoto && !log.punch_out_photo) log.punch_out_photo = meta.outPhoto;
               if (meta.inTs && !log.punch_in_ts) log.punch_in_ts = meta.inTs;
               if (meta.outTs && !log.punch_out_ts) log.punch_out_ts = meta.outTs;
+              if (meta.reason && !log.reason_note) log.reason_note = meta.reason;
             } catch (e) {}
           }
           log.recorded_address = cleanAddr;
@@ -837,15 +958,18 @@
           outLat: record.punch_out_lat || record.lat || null,
           outLng: record.punch_out_lng || record.lng || null,
           inTs: record.punch_in_ts || null,
-          outTs: record.punch_out_ts || null
+          outTs: record.punch_out_ts || null,
+          reason: record.reason_note || null
         };
         // If punch_out_photo is an HTTP URL (Supabase Storage), include it in metadata
         if (record.punch_out_photo && record.punch_out_photo.startsWith('http')) {
           metaObj.outPhoto = record.punch_out_photo;
         }
         packedAddress = `${cleanInAddr} [PUNCH_OUT_META:${JSON.stringify(metaObj)}]`;
-      } else if (record.punch_in_ts) {
-        const metaObj = { inTs: record.punch_in_ts };
+      } else if (record.punch_in_ts || record.reason_note) {
+        const metaObj = {};
+        if (record.punch_in_ts) metaObj.inTs = record.punch_in_ts;
+        if (record.reason_note) metaObj.reason = record.reason_note;
         packedAddress = `${cleanInAddr} [PUNCH_OUT_META:${JSON.stringify(metaObj)}]`;
       }
 
@@ -1011,6 +1135,7 @@
         localStorage.setItem('geo_zones_v6', JSON.stringify(zonesData.filter(z => !isPanIndiaZone(z.zone_name))));
         localStorage.setItem('geo_att_v6', JSON.stringify(attendanceData.slice(0, 100)));
         localStorage.setItem('geo_holidays_v6', JSON.stringify(companyHolidays));
+        localStorage.setItem('geo_sec_colors_v6', JSON.stringify(sectionColors));
       } catch (e) {}
     }
 
@@ -1275,21 +1400,60 @@
         stopCamera();
         const constraints = {
           audio: false,
-          video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } }
+          video: { facingMode: { ideal: currentCameraFacing }, width: { ideal: 480 }, height: { ideal: 360 } }
         };
         cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
         const video = document.getElementById('camera-stream');
         video.srcObject = cameraStream;
         video.setAttribute('playsinline', '');
         video.setAttribute('webkit-playsinline', '');
+
+        // Mirror front camera (selfie mode), unmirror back camera
+        if (currentCameraFacing === 'user') {
+          video.classList.add('mirror-mode');
+        } else {
+          video.classList.remove('mirror-mode');
+        }
+
         await video.play();
         video.classList.remove('hidden');
         document.getElementById('captured-photo').classList.add('hidden');
         document.getElementById('camera-placeholder').classList.add('hidden');
+
+        const switchBtn = document.getElementById('btn-camera-switch');
+        const facingLabel = document.getElementById('camera-facing-label');
+        if (switchBtn && facingLabel) {
+          switchBtn.classList.remove('hidden');
+          facingLabel.textContent = currentCameraFacing === 'user' ? 'Front Cam' : 'Back Cam';
+        }
         updateCameraStamp();
       } catch (err) {
         console.warn("Camera fallback active:", err);
+        // Fallback: try default camera without strict facingMode
+        try {
+          cameraStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+          const video = document.getElementById('camera-stream');
+          video.srcObject = cameraStream;
+          video.setAttribute('playsinline', '');
+          video.setAttribute('webkit-playsinline', '');
+          await video.play();
+          video.classList.remove('hidden');
+          document.getElementById('captured-photo').classList.add('hidden');
+          document.getElementById('camera-placeholder').classList.add('hidden');
+          document.getElementById('btn-camera-switch')?.classList.remove('hidden');
+          updateCameraStamp();
+        } catch (e2) {}
       }
+    }
+
+    async function switchCameraFacingMode() {
+      currentCameraFacing = currentCameraFacing === 'user' ? 'environment' : 'user';
+      const facingLabel = document.getElementById('camera-facing-label');
+      if (facingLabel) {
+        facingLabel.textContent = currentCameraFacing === 'user' ? 'Front Cam' : 'Back Cam';
+      }
+      await startCamera();
+      alert(`Switched to ${currentCameraFacing === 'user' ? 'Front' : 'Back'} Camera.`);
     }
 
     function stopCamera() {
@@ -1297,6 +1461,7 @@
         cameraStream.getTracks().forEach(t => t.stop());
         cameraStream = null;
       }
+      document.getElementById('btn-camera-switch')?.classList.add('hidden');
     }
 
     function capturePreviewPhoto() {
@@ -1339,6 +1504,7 @@
 
       document.getElementById('btn-take-preview').classList.add('hidden');
       document.getElementById('retake-confirm-bar').classList.remove('hidden');
+      document.getElementById('btn-camera-switch')?.classList.add('hidden');
     }
 
     function retakePhoto() {
@@ -1349,6 +1515,7 @@
       if (cameraStream) video.classList.remove('hidden');
       document.getElementById('retake-confirm-bar').classList.add('hidden');
       document.getElementById('btn-take-preview').classList.remove('hidden');
+      if (cameraStream) document.getElementById('btn-camera-switch')?.classList.remove('hidden');
     }
 
     async function confirmAndSubmitAttendance() {
@@ -1862,7 +2029,7 @@
               <span class="font-extrabold text-xs text-slate-900 truncate">${z.zone_name}</span>
               <div class="flex items-center gap-1" onclick="event.stopPropagation()">
                 <span class="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">Staff: ${zoneEmps.length}</span>
-                <button onclick="prefillEditProject('${z.zone_name}')" title="Edit Project" class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded">✏️ Edit</button>
+                <button onclick="prefillEditProject('${z.zone_name}')" title="Edit Project" class="bg-blue-100 hover:bg-blue-200 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded">Edit</button>
                 <button onclick="deleteProjectArea('${z.zone_name}')" title="Delete Project" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded">🗑️</button>
               </div>
             </div>
@@ -1888,7 +2055,7 @@
     }
 
     function prefillEditProject(zoneName) {
-      document.getElementById('proj-form-title').textContent = `✏️ Edit Project Area: ${zoneName}`;
+      document.getElementById('proj-form-title').textContent = `Edit Project Area: ${zoneName}`;
       document.getElementById('proj-old-name').value = zoneName;
       document.getElementById('proj-area-name').value = zoneName;
       const coord = usersData.find(u => u.role === 'coordinator' && u.zone_name === zoneName);
@@ -2037,21 +2204,160 @@
 
     let profCalYear = new Date().getFullYear();
     let profCalMonth = new Date().getMonth();
-    let adminHolidayScope = 'EMP'; // 'EMP' for particular employee, 'ALL' for complete staff
+    let adminHolidayScope = 'EMP'; // Double-click on calendar date marks/unmarks Holiday for the opened employee
 
-    function setAdminHolidayScope(scope) {
-      if (!currentUser || currentUser.role !== 'admin') return;
-      adminHolidayScope = scope === 'ALL' ? 'ALL' : 'EMP';
-      const empBtn = document.getElementById('btn-hol-scope-emp');
-      const allBtn = document.getElementById('btn-hol-scope-all');
-      if (empBtn && allBtn) {
-        empBtn.className = adminHolidayScope === 'EMP'
-          ? 'text-[10px] font-extrabold py-1 px-2 rounded bg-indigo-600 text-white shadow-sm'
-          : 'text-[10px] font-extrabold py-1 px-2 rounded bg-white text-slate-700 border border-slate-300';
-        allBtn.className = adminHolidayScope === 'ALL'
-          ? 'text-[10px] font-extrabold py-1 px-2 rounded bg-indigo-600 text-white shadow-sm'
-          : 'text-[10px] font-extrabold py-1 px-2 rounded bg-white text-slate-700 border border-slate-300';
+    function syncColorPickersAndLegendUI() {
+      ['Present', 'Absent', 'Leave', 'Holiday', 'Sunday'].forEach(key => {
+        const col = sectionColors[key] || DEFAULT_SECTION_COLORS[key];
+        const picker = document.getElementById(`color-pick-${key}`);
+        if (picker) picker.value = col;
+        const swatch = document.getElementById(`legend-swatch-${key}`);
+        if (swatch) swatch.style.backgroundColor = col;
+      });
+    }
+
+    function updateSectionColor(sectionKey, hexColor) {
+      if (!sectionKey || !hexColor) return;
+      sectionColors[sectionKey] = hexColor;
+      saveLocalFallback();
+      syncColorPickersAndLegendUI();
+      renderProfileCalendar();
+    }
+
+    function resetSectionColors() {
+      sectionColors = { ...DEFAULT_SECTION_COLORS };
+      saveLocalFallback();
+      syncColorPickersAndLegendUI();
+      renderProfileCalendar();
+      alert("🎨 Reset calendar section colors to default.");
+    }
+
+    function selectProfileCalendarDate(dateStr) {
+      if (!dateStr) return;
+      selectedSideCalDate = dateStr;
+      const dateInput = document.getElementById('side-reason-date');
+      if (dateInput) dateInput.value = dateStr;
+      const badge = document.getElementById('side-selected-date-badge');
+      if (badge) badge.textContent = dateStr;
+
+      const log = attendanceData.find(a => a.emp_code === activeProfileEmpCode && a.att_date === dateStr);
+      const gazetteName = companyHolidays[dateStr];
+      const statusSel = document.getElementById('side-reason-status');
+      const scopeSel = document.getElementById('side-reason-scope');
+      const reasonInput = document.getElementById('side-reason-text');
+
+      if (log) {
+        if (statusSel) statusSel.value = log.status || 'Holiday';
+        if (scopeSel) scopeSel.value = gazetteName ? 'GAZETTE' : 'EMP';
+        const extractedReason = log.reason_note || (log.recorded_address ? log.recorded_address.replace(/^🎉\s*(Company\s*)?Holiday:\s*/i, '').replace(/^📝\s*Reason:\s*/i, '') : '');
+        if (reasonInput) reasonInput.value = extractedReason && extractedReason !== 'Captured' ? extractedReason : '';
+      } else if (gazetteName) {
+        if (statusSel) statusSel.value = 'Holiday';
+        if (scopeSel) scopeSel.value = 'GAZETTE';
+        if (reasonInput) reasonInput.value = gazetteName;
+      } else {
+        if (statusSel) statusSel.value = 'Holiday';
+        if (scopeSel) scopeSel.value = 'EMP';
+        if (reasonInput) reasonInput.value = '';
       }
+      renderProfileCalendar();
+    }
+
+    function onSideDateInputChanged(val) {
+      if (!val) return;
+      const parts = val.split('-');
+      if (parts.length === 3) {
+        profCalYear = parseInt(parts[0], 10);
+        profCalMonth = parseInt(parts[1], 10) - 1;
+      }
+      selectProfileCalendarDate(val);
+    }
+
+    async function applySideBoxReasonAndStatus() {
+      if (!activeProfileEmpCode) return;
+      const emp = usersData.find(u => u.emp_code === activeProfileEmpCode);
+      if (!emp) return;
+      if (currentUser?.role === 'coordinator' && !canCoordinatorAccessEmployee(emp)) return;
+
+      const targetDate = document.getElementById('side-reason-date')?.value || selectedSideCalDate || todayStr;
+      const chosenStatus = document.getElementById('side-reason-status')?.value || 'Holiday';
+      const chosenScope = document.getElementById('side-reason-scope')?.value || 'EMP';
+      const reasonVal = (document.getElementById('side-reason-text')?.value || '').trim();
+
+      if (chosenScope === 'GAZETTE' && currentUser?.role !== 'admin') {
+        return alert("Only Admin can edit Live Gazette Holidays for all employees.");
+      }
+
+      // CLEAR / REMOVE OVERRIDE OR GAZETTE HOLIDAY
+      if (chosenStatus === 'CLEAR') {
+        if (chosenScope === 'GAZETTE' || companyHolidays[targetDate]) {
+          companyHolidays[targetDate] = "";
+          delete companyHolidays[targetDate];
+          attendanceData = attendanceData.filter(a => !(a.att_date === targetDate && a.status === 'Holiday'));
+          if (isSupabaseConfigured) {
+            await supabaseClient.from('attendance_logs').delete().eq('att_date', targetDate).eq('status', 'Holiday');
+          }
+        }
+        attendanceData = attendanceData.filter(a => !(a.emp_code === activeProfileEmpCode && a.att_date === targetDate));
+        if (isSupabaseConfigured) {
+          await supabaseClient.from('attendance_logs').delete().eq('emp_code', activeProfileEmpCode).eq('att_date', targetDate);
+        }
+        saveLocalFallback();
+        renderEmployeeProfileHistory();
+        renderProfileCalendar();
+        renderDashboard();
+        alert(`↩ Cleared status & reason on ${targetDate}.`);
+        return;
+      }
+
+      const labelText = reasonVal || (chosenStatus === 'Holiday' ? 'Gazetted / Custom Holiday' : `${chosenStatus} Marked`);
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      if (chosenScope === 'GAZETTE' && chosenStatus === 'Holiday') {
+        companyHolidays[targetDate] = labelText;
+        saveLocalFallback();
+        renderEmployeeProfileHistory();
+        renderProfileCalendar();
+        renderDashboard();
+        alert(`🎉 Updated Live Gazette Holiday on ${targetDate}: "${labelText}"`);
+        return;
+      }
+
+      // Apply to this specific employee (with reason_note saved)
+      const existingLog = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === targetDate);
+      const addrPrefix = chosenStatus === 'Holiday' ? `🎉 Holiday: ${labelText}` : `📝 Reason: ${labelText}`;
+      const rec = {
+        ...(existingLog || {}),
+        emp_code: emp.emp_code,
+        full_name: emp.full_name,
+        zone_name: emp.zone_name,
+        att_date: targetDate,
+        att_time: chosenStatus === 'Present' ? (existingLog?.att_time && existingLog.att_time !== '-' ? existingLog.att_time : nowTime) : '-',
+        status: chosenStatus,
+        reason_note: labelText,
+        recorded_address: addrPrefix,
+        marked_by: currentUser.full_name
+      };
+
+      attendanceData = attendanceData.filter(a => !(a.emp_code === emp.emp_code && a.att_date === targetDate));
+      attendanceData.unshift(rec);
+      if (isSupabaseConfigured) {
+        const dbPayload = buildSupabaseCompatibleRecord(rec);
+        const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
+        if (error) {
+          await supabaseClient.from('attendance_logs').update({
+            att_time: dbPayload.att_time,
+            status: dbPayload.status,
+            recorded_address: dbPayload.recorded_address,
+            marked_by: dbPayload.marked_by
+          }).eq('emp_code', rec.emp_code).eq('att_date', rec.att_date);
+        }
+      }
+      saveLocalFallback();
+      renderEmployeeProfileHistory();
+      renderProfileCalendar();
+      renderDashboard();
+      alert(`✔ Saved ${chosenStatus} (${labelText}) for ${emp.full_name} on ${targetDate}!`);
     }
 
     function openEmployeeProfileModal(empCode) {
@@ -2067,17 +2373,6 @@
       document.getElementById('prof-phone').textContent = emp.phone || 'Not Added';
       document.getElementById('prof-pan').textContent = emp.pan_card || 'Not Added';
       document.getElementById('prof-aadhaar').textContent = getUserAadhaar(emp);
-
-      // Show holiday double-click controls ONLY to Admin; Coordinators are strictly View-Only
-      const adminCalControls = document.getElementById('admin-cal-holiday-controls');
-      if (adminCalControls) {
-        if (currentUser && currentUser.role === 'admin') {
-          adminCalControls.classList.remove('hidden');
-          setAdminHolidayScope(adminHolidayScope);
-        } else {
-          adminCalControls.classList.add('hidden');
-        }
-      }
 
       const baseDateStr = filterStartDate || todayStr;
       const parts = baseDateStr.split('-');
@@ -2097,13 +2392,15 @@
       document.getElementById('prof-date-start').value = firstDayStr;
       document.getElementById('prof-date-end').value = lastDayStr;
 
+      syncColorPickersAndLegendUI();
+      selectProfileCalendarDate(baseDateStr);
       renderEmployeeProfileHistory();
       renderProfileCalendar();
       document.getElementById('employee-profile-modal').classList.remove('hidden');
     }
 
     async function handleAdminCalendarDblClick(targetDate) {
-      // Strictly Admin only — Coordinators cannot edit the calendar at all
+      // Strictly Admin only — Coordinators cannot double-click toggle holidays
       if (!currentUser || currentUser.role !== 'admin' || !activeProfileEmpCode) return;
 
       const emp = usersData.find(u => u.emp_code === activeProfileEmpCode);
@@ -2114,90 +2411,54 @@
 
       // UNCLICK / UNDO HOLIDAY ON DOUBLE-CLICK IF ALREADY HOLIDAY
       if (isCurrentlyHoliday) {
-        if (adminHolidayScope === 'ALL' || companyHolidays[targetDate]) {
+        if (companyHolidays[targetDate]) {
+          companyHolidays[targetDate] = "";
           delete companyHolidays[targetDate];
-          attendanceData = attendanceData.filter(a => !(a.att_date === targetDate && a.status === 'Holiday'));
-          if (isSupabaseConfigured) {
-            await supabaseClient.from('attendance_logs').delete().eq('att_date', targetDate).eq('status', 'Holiday');
-          }
-          saveLocalFallback();
-          renderEmployeeProfileHistory();
-          renderProfileCalendar();
-          renderDashboard();
-          alert(`↩ Undid Company Holiday on ${targetDate}.`);
-          return;
-        } else {
-          attendanceData = attendanceData.filter(a => !(a.emp_code === activeProfileEmpCode && a.att_date === targetDate && a.status === 'Holiday'));
-          if (isSupabaseConfigured) {
-            await supabaseClient.from('attendance_logs').delete().eq('emp_code', activeProfileEmpCode).eq('att_date', targetDate);
-          }
-          saveLocalFallback();
-          renderEmployeeProfileHistory();
-          renderProfileCalendar();
-          renderDashboard();
-          alert(`↩ Undid Holiday for ${emp.full_name} on ${targetDate}.`);
-          return;
         }
+        attendanceData = attendanceData.filter(a => !(a.emp_code === activeProfileEmpCode && a.att_date === targetDate && a.status === 'Holiday'));
+        if (isSupabaseConfigured) {
+          await supabaseClient.from('attendance_logs').delete().eq('emp_code', activeProfileEmpCode).eq('att_date', targetDate);
+        }
+        saveLocalFallback();
+        selectProfileCalendarDate(targetDate);
+        renderEmployeeProfileHistory();
+        renderProfileCalendar();
+        renderDashboard();
+        alert(`↩ Undid Holiday on ${targetDate}.`);
+        return;
       }
 
-      // OTHERWISE SET HOLIDAY ON DOUBLE-CLICK
-      const noteVal = (document.getElementById('prof-cal-holiday-note')?.value || '').trim();
-      const holidayLabel = noteVal || 'Holiday';
+      // OTHERWISE SET HOLIDAY ON DOUBLE-CLICK (uses reason from side box if typed, else 'Holiday')
+      const typedReason = (document.getElementById('side-reason-text')?.value || '').trim();
+      const holidayLabel = typedReason || 'Holiday';
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      if (adminHolidayScope === 'ALL') {
-        companyHolidays[targetDate] = holidayLabel;
-        const allStaff = usersData.filter(u => u.status === 'active' && u.role !== 'admin');
-        for (const staffMember of allStaff) {
-          const rec = {
-            emp_code: staffMember.emp_code,
-            full_name: staffMember.full_name,
-            zone_name: staffMember.zone_name,
-            att_date: targetDate,
-            att_time: nowTime,
-            status: 'Holiday',
-            lat: null,
-            lng: null,
-            recorded_address: `🎉 Company Holiday: ${holidayLabel}`,
-            photo_base64: null,
-            marked_by: currentUser.full_name
-          };
-          attendanceData = attendanceData.filter(a => !(a.emp_code === staffMember.emp_code && a.att_date === targetDate));
-          attendanceData.unshift(rec);
-          if (isSupabaseConfigured) {
-            await supabaseClient.from('attendance_logs').upsert(rec, { onConflict: 'emp_code,att_date' });
-          }
-        }
-        saveLocalFallback();
-        renderEmployeeProfileHistory();
-        renderProfileCalendar();
-        renderDashboard();
-        alert(`🎉 Marked ${targetDate} as Holiday (${holidayLabel}) for Complete Staff! (Double-click again to undo)`);
-      } else {
-        const rec = {
-          emp_code: emp.emp_code,
-          full_name: emp.full_name,
-          zone_name: emp.zone_name,
-          att_date: targetDate,
-          att_time: nowTime,
-          status: 'Holiday',
-          lat: null,
-          lng: null,
-          recorded_address: `🎉 Holiday: ${holidayLabel}`,
-          photo_base64: null,
-          marked_by: currentUser.full_name
-        };
-        attendanceData = attendanceData.filter(a => !(a.emp_code === emp.emp_code && a.att_date === targetDate));
-        attendanceData.unshift(rec);
-        if (isSupabaseConfigured) {
-          await supabaseClient.from('attendance_logs').upsert(rec, { onConflict: 'emp_code,att_date' });
-        }
-        saveLocalFallback();
-        renderEmployeeProfileHistory();
-        renderProfileCalendar();
-        renderDashboard();
-        alert(`🎉 Marked ${targetDate} as Holiday for ${emp.full_name}! (Double-click again to undo)`);
+      const rec = {
+        emp_code: emp.emp_code,
+        full_name: emp.full_name,
+        zone_name: emp.zone_name,
+        att_date: targetDate,
+        att_time: nowTime,
+        status: 'Holiday',
+        reason_note: holidayLabel,
+        lat: null,
+        lng: null,
+        recorded_address: `🎉 Holiday: ${holidayLabel}`,
+        photo_base64: null,
+        marked_by: currentUser.full_name
+      };
+      attendanceData = attendanceData.filter(a => !(a.emp_code === emp.emp_code && a.att_date === targetDate));
+      attendanceData.unshift(rec);
+      if (isSupabaseConfigured) {
+        const dbPayload = buildSupabaseCompatibleRecord(rec);
+        await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
       }
+      saveLocalFallback();
+      selectProfileCalendarDate(targetDate);
+      renderEmployeeProfileHistory();
+      renderProfileCalendar();
+      renderDashboard();
+      alert(`🎉 Marked ${targetDate} as Holiday (${holidayLabel})! (Double-click again to undo)`);
     }
 
     function changeProfileCalendarMonth(delta) {
@@ -2220,6 +2481,7 @@
 
     function renderProfileCalendar() {
       if (!activeProfileEmpCode) return;
+      syncColorPickersAndLegendUI();
       const monthNames = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
@@ -2244,6 +2506,7 @@
         }
       });
 
+      const monthGazetteItems = [];
       let cellsHTML = '';
       for (let i = 0; i < firstDow; i++) {
         cellsHTML += `<div class="h-8 rounded-lg bg-slate-100/40"></div>`;
@@ -2251,52 +2514,90 @@
 
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${monthPrefix}${String(d).padStart(2, '0')}`;
+        const dow = new Date(profCalYear, profCalMonth, d).getDay(); // 0 = Sunday
+        const isSunday = dow === 0;
         const log = logMap[dateStr];
         const compHoliday = companyHolidays[dateStr];
         const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedSideCalDate;
+
+        if (compHoliday) {
+          monthGazetteItems.push({ dateStr, name: compHoliday });
+        }
 
         const effectiveStatus = log ? log.status : (compHoliday ? 'Holiday' : null);
 
-        let cellStyle = 'bg-white border-slate-200 text-slate-600';
+        let bgHex = '#ffffff';
+        let borderStyle = 'border-slate-200 text-slate-700';
         let shortCode = '';
-        let titleTip = `${dateStr}: Not Marked`;
+        let titleTip = `${dateStr}${isSunday ? ' (Sunday)' : ''}: Not Marked`;
+
+        // Toned-down Sunday background when no status is marked yet
+        if (isSunday && !effectiveStatus) {
+          bgHex = sectionColors.Sunday || DEFAULT_SECTION_COLORS.Sunday;
+          borderStyle = 'border-slate-300 text-slate-600 opacity-90';
+          shortCode = 'SUN';
+          titleTip = `${dateStr} • Sunday (Weekly Off / Toned Down)`;
+        }
+
+        const reasonNote = log?.reason_note || compHoliday || (log?.recorded_address ? log.recorded_address.replace(/^🎉\s*(Company\s*)?Holiday:\s*/i, '').replace(/^📝\s*Reason:\s*/i, '') : '');
 
         if (effectiveStatus === 'Present') {
-          cellStyle = 'bg-emerald-200 border-emerald-500 text-emerald-950 font-black';
+          bgHex = sectionColors.Present || DEFAULT_SECTION_COLORS.Present;
+          borderStyle = 'border-emerald-600/60 text-slate-900 font-black';
           shortCode = 'P';
-          titleTip = `${dateStr} • Present (${log?.att_time || '-'})`;
+          titleTip = `${dateStr} • Present (${log?.att_time || '-'})${reasonNote ? ' — ' + reasonNote : ''}`;
         } else if (effectiveStatus === 'Leave') {
-          cellStyle = 'bg-amber-200 border-amber-500 text-amber-950 font-black';
+          bgHex = sectionColors.Leave || DEFAULT_SECTION_COLORS.Leave;
+          borderStyle = 'border-amber-600/60 text-slate-900 font-black';
           shortCode = 'L';
-          titleTip = `${dateStr} • Leave`;
+          titleTip = `${dateStr} • Leave${reasonNote ? ' (' + reasonNote + ')' : ''}`;
         } else if (effectiveStatus === 'Holiday') {
-          cellStyle = 'bg-purple-200 border-purple-500 text-purple-950 font-black';
-          shortCode = 'H';
-          const hName = compHoliday || (log?.recorded_address ? log.recorded_address.replace(/^🎉\s*(Company\s*)?Holiday:\s*/i, '') : 'Holiday');
-          titleTip = `${dateStr} • Holiday (${hName})`;
+          bgHex = sectionColors.Holiday || DEFAULT_SECTION_COLORS.Holiday;
+          borderStyle = 'border-purple-600/60 text-slate-900 font-black';
+          shortCode = compHoliday ? 'GH' : 'H';
+          titleTip = `${dateStr} • Holiday (${reasonNote || 'Holiday'})`;
         } else if (effectiveStatus === 'Absent') {
-          cellStyle = 'bg-rose-200 border-rose-500 text-rose-950 font-black';
+          bgHex = sectionColors.Absent || DEFAULT_SECTION_COLORS.Absent;
+          borderStyle = 'border-rose-600/60 text-slate-900 font-black';
           shortCode = 'A';
-          titleTip = `${dateStr} • Absent`;
+          titleTip = `${dateStr} • Absent${reasonNote ? ' (' + reasonNote + ')' : ''}`;
         }
 
         if (isAdminUser) {
-          titleTip += ' — Double-click to Set / Undo Holiday';
+          titleTip += ' — Click to edit Reason in side box | Double-click to toggle Holiday';
         }
 
-        const todayRing = isToday ? 'ring-2 ring-blue-600' : '';
-        const cursorStyle = isAdminUser ? 'cursor-pointer hover:brightness-95' : 'cursor-default';
+        const ringClass = isSelected
+          ? 'ring-2 ring-indigo-600 shadow-sm'
+          : (isToday ? 'ring-2 ring-blue-500' : '');
         const dblClickAttr = isAdminUser ? `ondblclick="handleAdminCalendarDblClick('${dateStr}')"` : '';
 
         cellsHTML += `
-          <div ${dblClickAttr} title="${titleTip}" class="h-8 rounded-lg border px-1 flex flex-col items-center justify-center leading-none transition ${cellStyle} ${todayRing} ${cursorStyle}">
+          <div onclick="selectProfileCalendarDate('${dateStr}')" ${dblClickAttr} title="${titleTip}" style="background-color: ${bgHex};" class="h-8 rounded-lg border px-1 flex flex-col items-center justify-center leading-none transition cursor-pointer hover:brightness-95 ${borderStyle} ${ringClass}">
             <span class="text-[10px] font-extrabold">${d}</span>
-            ${shortCode ? `<span class="text-[7px] font-black uppercase">${shortCode}</span>` : ''}
+            ${shortCode ? `<span class="text-[6.5px] font-black uppercase tracking-tighter">${shortCode}</span>` : ''}
           </div>
         `;
       }
 
       gridEl.innerHTML = cellsHTML;
+
+      // Render this month's Gazette & Custom Holidays summary list below calendar
+      const gazetteListEl = document.getElementById('prof-month-gazette-list');
+      if (gazetteListEl) {
+        if (monthGazetteItems.length === 0) {
+          gazetteListEl.innerHTML = `<div class="text-slate-400 text-center py-0.5">No Gazette Holidays in ${monthNames[profCalMonth]} ${profCalYear}. Select any date to add/edit.</div>`;
+        } else {
+          gazetteListEl.innerHTML = monthGazetteItems.map(item => `
+            <div onclick="selectProfileCalendarDate('${item.dateStr}')" class="flex items-center justify-between px-1.5 py-0.5 rounded hover:bg-purple-50 cursor-pointer">
+              <span class="font-mono font-bold text-purple-800">${item.dateStr.slice(5)}</span>
+              <span class="font-semibold text-slate-700 truncate max-w-[140px]">🏛️ ${item.name}</span>
+              <span class="text-[9px] text-indigo-600 font-bold">Edit</span>
+            </div>
+          `).join('');
+        }
+      }
     }
 
     function renderEmployeeProfileHistory() {
@@ -2313,8 +2614,26 @@
       }
       renderProfileCalendar();
 
-      const empHistory = attendanceData
-        .filter(a => a.emp_code === activeProfileEmpCode && a.att_date >= startD && a.att_date <= endD)
+      const rawEmpLogs = attendanceData.filter(a => a.emp_code === activeProfileEmpCode && a.att_date >= startD && a.att_date <= endD);
+      const loggedDates = new Set(rawEmpLogs.map(x => x.att_date));
+
+      // Include Live Gazette Holidays in the range automatically if no manual log exists for that date
+      const gazetteVirtualLogs = [];
+      Object.keys(companyHolidays).forEach(gDate => {
+        if (gDate >= startD && gDate <= endD && !loggedDates.has(gDate) && companyHolidays[gDate]) {
+          gazetteVirtualLogs.push({
+            emp_code: activeProfileEmpCode,
+            att_date: gDate,
+            att_time: '-',
+            punch_out_time: '-',
+            status: 'Holiday',
+            reason_note: companyHolidays[gDate],
+            recorded_address: `🏛️ Gazette Holiday: ${companyHolidays[gDate]}`
+          });
+        }
+      });
+
+      const empHistory = [...rawEmpLogs, ...gazetteVirtualLogs]
         .sort((a, b) => b.att_date.localeCompare(a.att_date));
 
       let p = 0, a = 0, l = 0, h = 0, totalPeriodMinutes = 0;
@@ -2344,15 +2663,19 @@
           photoBtn = `${b1}${b2}`;
         }
 
+        const displayReasonOrLoc = log.reason_note
+          ? `<span class="font-bold text-indigo-900">📝 ${log.reason_note}</span>${log.recorded_address && !log.recorded_address.includes(log.reason_note) ? `<div class="text-[10px] text-slate-500">${log.recorded_address}</div>` : ''}`
+          : (log.recorded_address || 'Captured');
+
         return `
-          <tr class="hover:bg-slate-50">
+          <tr onclick="selectProfileCalendarDate('${log.att_date}')" class="hover:bg-slate-50 cursor-pointer">
             <td class="py-2 px-2 font-mono font-bold">${log.att_date}</td>
             <td class="py-2 px-2 text-emerald-700 font-bold">${log.att_time || '-'}</td>
             <td class="py-2 px-2 text-rose-700 font-bold">${log.punch_out_time || '-'}</td>
             <td class="py-2 px-2 font-extrabold text-indigo-800">${durInfo.text}</td>
             <td class="py-2 px-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badgeClass}">${log.status}</span></td>
-            <td class="py-2 px-2">${log.recorded_address || 'Captured'}</td>
-            <td class="py-2 px-2 whitespace-nowrap">${photoBtn}</td>
+            <td class="py-2 px-2">${displayReasonOrLoc}</td>
+            <td class="py-2 px-2 whitespace-nowrap" onclick="event.stopPropagation()">${photoBtn}</td>
           </tr>
         `;
       }).join('');
@@ -2504,9 +2827,8 @@
             <td class="py-2.5 px-3 font-mono text-xs text-slate-700">${getUserAadhaar(u)}</td>
             <td class="py-2.5 px-3">${statusBadge}</td>
             <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
-              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[11px] font-bold">✏️ Edit</button>
-              <button onclick="toggleEmployeeStatus('${u.emp_code}')" class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-[11px] font-bold">${u.status === 'active' ? 'Outgoing' : 'Activate'}</button>
-              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 text-rose-700 px-2 py-1 rounded text-[11px] font-bold">Delete</button>
+              <button onclick="prefillEditUser('${u.emp_code}')" class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded text-[11px] font-bold">Edit</button>
+              <button onclick="deleteEmployee('${u.emp_code}')" class="bg-rose-50 text-rose-700 px-2.5 py-1 rounded text-[11px] font-bold">Delete</button>
             </td>
           </tr>
         `;
@@ -2604,18 +2926,7 @@
       onRoleSelectionChange();
     }
 
-    async function toggleEmployeeStatus(empCode) {
-      const user = usersData.find(u => u.emp_code === empCode);
-      if (!user) return;
-      if (currentUser.role === 'coordinator' && !canCoordinatorAccessEmployee(user)) return;
-      const nextStatus = user.status === 'active' ? 'outgoing' : 'active';
-      user.status = nextStatus;
-      saveLocalFallback();
-      renderDashboard();
-      if (isSupabaseConfigured) {
-        await supabaseClient.from('app_users').update({ status: nextStatus }).eq('emp_code', empCode);
-      }
-    }
+    // Outgoing status toggle removed as requested
 
     async function deleteEmployee(empCode) {
       if (empCode === 'ADMIN01') return alert("Cannot delete Master Admin.");
