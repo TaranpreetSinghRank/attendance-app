@@ -202,6 +202,18 @@
           <span class="text-[10px] font-extrabold uppercase bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full shrink-0">Coordinator Self Punch</span>
         </div>
 
+        <!-- NEXT-DAY MISSING PUNCH OUT REMINDER BANNER -->
+        <div id="emp-missing-punchout-banner" class="hidden mb-3.5 bg-orange-50 border border-orange-300 rounded-xl p-3 flex items-start justify-between gap-2 text-xs text-orange-900">
+          <div class="flex items-start gap-2 min-w-0">
+            <span class="text-base leading-none shrink-0">⚠️</span>
+            <div class="min-w-0">
+              <p class="font-extrabold text-orange-950">Previous Punch Out Missing</p>
+              <p id="emp-missing-punchout-text" class="text-[11px] font-semibold text-orange-800 mt-0.5 break-words"></p>
+            </div>
+          </div>
+          <button type="button" onclick="document.getElementById('emp-missing-punchout-banner').classList.add('hidden')" class="shrink-0 text-orange-700 hover:text-orange-950 font-extrabold text-xs px-1.5 py-0.5 rounded" title="Dismiss">✕</button>
+        </div>
+
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3.5 mb-4">
           <div class="min-w-0">
             <span id="emp-portal-role-pill" class="inline-block text-[10px] sm:text-[11px] font-bold uppercase text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">Assigned Project / Area</span>
@@ -261,9 +273,7 @@
                 <p class="text-[11px] text-slate-500 mt-0.5 break-words" id="gps-coord-text">Waiting for GPS...</p>
               </div>
             </div>
-            <button onclick="fetchLiveGPS()" class="shrink-0 text-xs bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg font-bold hover:bg-slate-100">
-              Refresh
-            </button>
+
           </div>
 
           <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[3/4] sm:aspect-[4/5] min-h-[280px] sm:min-h-[380px] max-h-[62dvh] w-full flex items-center justify-center border-2 border-slate-300 shadow-inner">
@@ -351,20 +361,8 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-            <div id="area-filter-wrapper" class="flex items-center gap-1.5 flex-1 sm:flex-initial min-w-[160px]">
-              <label class="text-xs font-bold text-slate-500 uppercase shrink-0">Area:</label>
-              <select id="area-filter-select" onchange="renderDashboard()" class="w-full sm:w-auto bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl px-3 py-2">
-                <option value="" disabled selected>-- Choose Area --</option>
-                <option value="ALL">All Projects</option>
-              </select>
-            </div>
-
-            <button onclick="handleRefreshAction()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2 rounded-xl border border-blue-200 flex items-center justify-center gap-1 shadow-sm">
-              <i data-lucide="refresh-cw" class="w-4 h-4"></i> <span>Refresh</span>
-            </button>
-
-            <button onclick="exportFilteredToExcelCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+          <div class="flex flex-wrap items-center justify-end gap-2 w-full lg:w-auto">
+            <button onclick="exportFilteredToExcelCSV()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center justify-center gap-1.5">
               <i data-lucide="download" class="w-4 h-4"></i> <span>Export Excel (.CSV)</span>
             </button>
           </div>
@@ -451,8 +449,18 @@
             </button>
           </div>
 
-          <!-- ROLE FILTER DROPDOWN + REAL-TIME SEARCH BAR -->
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+          <!-- ROLE FILTER (LEFT) + AREA FILTER (MIDDLE) + MISSING PUNCH OUT PILL + REAL-TIME SEARCH BAR (RIGHT) -->
+          <div class="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap items-stretch sm:items-center gap-2 w-full lg:w-auto">
+            <button
+              id="btn-filter-missing-out"
+              type="button"
+              onclick="toggleMissingPunchOutFilter()"
+              title="Show only records with missing Punch Out after 12:00 AM IST"
+              class="hidden px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold border border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100 transition flex items-center justify-center gap-1 shrink-0"
+            >
+              <span>⚠️ Punch Out Missing</span>
+              <span class="bg-orange-600 text-white text-[10px] px-1.5 py-0.2 rounded-full" id="missing-out-count">0</span>
+            </button>
             <div class="flex items-center gap-1.5 shrink-0">
               <span class="text-[11px] font-extrabold uppercase text-slate-500 shrink-0">Role:</span>
               <select
@@ -464,6 +472,17 @@
                 <option value="coordinator">Coordinators Only</option>
                 <option value="employee">Employees Only</option>
                 <option value="admin">Admins Only</option>
+              </select>
+            </div>
+
+            <div id="area-filter-wrapper" class="flex items-center gap-1.5 shrink-0">
+              <label for="area-filter-select" class="text-[11px] font-extrabold uppercase text-slate-500 shrink-0">Area:</label>
+              <select
+                id="area-filter-select"
+                onchange="renderDashboard()"
+                class="w-full sm:w-auto bg-white border border-slate-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                <option value="ALL" selected>All Projects</option>
               </select>
             </div>
 
@@ -803,6 +822,45 @@
     </div>
   </div>
 
+  <!-- MANUAL PUNCH OUT TIME MODAL (FOR ADMIN / COORDINATOR) -->
+  <div id="manual-punchout-modal" onclick="closeManualPunchOutModal()" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded border border-indigo-200">Update Shift End Time</span>
+          <h3 id="mpo-modal-title" class="text-base font-extrabold text-slate-900 mt-1">Mark Punch Out</h3>
+        </div>
+        <button type="button" onclick="closeManualPunchOutModal()" class="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg">✕ Close</button>
+      </div>
+
+      <form onsubmit="submitManualPunchOutModal(event)" class="space-y-3.5">
+        <input type="hidden" id="mpo-emp-code" value="" />
+        <input type="hidden" id="mpo-att-date" value="" />
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1">
+          <p class="font-extrabold text-slate-800" id="mpo-staff-summary"></p>
+          <p class="text-slate-600 font-semibold" id="mpo-punchin-summary"></p>
+        </div>
+
+        <div>
+          <label for="mpo-time-input" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Actual Punch Out Time *</label>
+          <input type="time" id="mpo-time-input" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            <button type="button" onclick="document.getElementById('mpo-time-input').value='17:00'" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg">05:00 PM</button>
+            <button type="button" onclick="document.getElementById('mpo-time-input').value='17:30'" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg">05:30 PM</button>
+            <button type="button" onclick="document.getElementById('mpo-time-input').value='18:00'" class="text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded-lg">06:00 PM</button>
+            <button type="button" onclick="document.getElementById('mpo-time-input').value='18:30'" class="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg">06:30 PM</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeManualPunchOutModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition">Cancel</button>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition">Save Punch Out</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- DELETE CONFIRMATION MODAL -->
   <div id="confirm-delete-modal" onclick="resolveDeleteConfirm(false)" class="hidden fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="bg-white rounded-2xl max-w-sm w-full max-h-[92dvh] overflow-y-auto p-5 sm:p-6 shadow-2xl space-y-4 text-center" onclick="event.stopPropagation()">
@@ -862,7 +920,46 @@
     const isSupabaseConfigured = SUPABASE_URL.startsWith("https://") && SUPABASE_ANON_KEY.length > 20;
     const supabaseClient = isSupabaseConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    function getTodayISTDateStr() {
+      try {
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(new Date());
+      } catch (e) {
+        const istMs = Date.now() + (5.5 * 60 * 60 * 1000);
+        return new Date(istMs).toISOString().split('T')[0];
+      }
+    }
+
+    function isPunchOutMissing(logOrRow) {
+      if (!logOrRow || logOrRow.status !== 'Present') return false;
+      const hasIn = Boolean(logOrRow.att_time && logOrRow.att_time !== '-');
+      const hasOut = Boolean(logOrRow.punch_out_time && logOrRow.punch_out_time !== '-');
+      if (!hasIn || hasOut) return false;
+      return Boolean(logOrRow.att_date && logOrRow.att_date < getTodayISTDateStr());
+    }
+
+    function format24hTo12hAMPM(hhmm) {
+      if (!hhmm || !hhmm.includes(':')) return hhmm;
+      const [hStr, mStr] = hhmm.split(':');
+      let h = parseInt(hStr, 10);
+      const m = mStr.padStart(2, '0');
+      const period = h >= 12 ? 'PM' : 'AM';
+      if (h === 0) h = 12;
+      else if (h > 12) h -= 12;
+      return `${String(h).padStart(2, '0')}:${m} ${period}`;
+    }
+
+    const todayStr = getTodayISTDateStr();
+    let filterMissingPunchOutOnly = false;
+
+    function toggleMissingPunchOutFilter() {
+      filterMissingPunchOutOnly = !filterMissingPunchOutOnly;
+      renderDashboard();
+    }
     let filterStartDate = todayStr;
     let filterEndDate = todayStr;
 
@@ -1332,6 +1429,15 @@
               if (meta.editedByRole && !log.edited_by_role) log.edited_by_role = meta.editedByRole;
               if (meta.editedByCode && !log.edited_by_code) log.edited_by_code = meta.editedByCode;
               if (meta.editedAt && !log.edited_at) log.edited_at = meta.editedAt;
+              if (meta.mBlank) log._isManualFromBlank = true;
+              if (meta.mOver) {
+                log._isManualOverride = true;
+                log._manualOverrideStatus = meta.mStat || log.status;
+                log._manualOverrideTs = meta.mTs || 0;
+              }
+              if (meta.preSnap && !log._preEditSnapshot) {
+                log._preEditSnapshot = meta.preSnap;
+              }
             } catch (e) {}
           }
           log.recorded_address = cleanAddr;
@@ -1382,6 +1488,34 @@
       if (record.edited_by_role) metaObj.editedByRole = record.edited_by_role;
       if (record.edited_by_code) metaObj.editedByCode = record.edited_by_code;
       if (record.edited_at) metaObj.editedAt = record.edited_at;
+      if (record._isManualFromBlank) metaObj.mBlank = true;
+      if (record._isManualOverride) {
+        metaObj.mOver = true;
+        metaObj.mStat = record._manualOverrideStatus || record.status;
+        metaObj.mTs = record._manualOverrideTs || 0;
+      }
+      if (record._preEditSnapshot) {
+        metaObj.preSnap = {
+          status: record._preEditSnapshot.status,
+          att_time: record._preEditSnapshot.att_time,
+          punch_in_ts: record._preEditSnapshot.punch_in_ts || null,
+          punch_out_time: record._preEditSnapshot.punch_out_time || '-',
+          punch_out_ts: record._preEditSnapshot.punch_out_ts || null,
+          work_duration: record._preEditSnapshot.work_duration || '-',
+          work_minutes: record._preEditSnapshot.work_minutes || 0,
+          lat: record._preEditSnapshot.lat || null,
+          lng: record._preEditSnapshot.lng || null,
+          punch_out_lat: record._preEditSnapshot.punch_out_lat || null,
+          punch_out_lng: record._preEditSnapshot.punch_out_lng || null,
+          recorded_address: record._preEditSnapshot.recorded_address || '',
+          punch_out_address: record._preEditSnapshot.punch_out_address || '-',
+          marked_by: record._preEditSnapshot.marked_by || 'Self (Geo-Photo)',
+          edited_by: record._preEditSnapshot.edited_by || null,
+          edited_by_role: record._preEditSnapshot.edited_by_role || null,
+          edited_by_code: record._preEditSnapshot.edited_by_code || null,
+          edited_at: record._preEditSnapshot.edited_at || null
+        };
+      }
 
       if (Object.keys(metaObj).length > 0) {
         packedAddress = `${cleanInAddr} [PUNCH_OUT_META:${JSON.stringify(metaObj)}]`;
@@ -1649,6 +1783,7 @@
       currentUser = null;
       pendingPhotoBase64 = null;
       pendingPhotoBlob = null;
+      filterMissingPunchOutOnly = false;
       document.getElementById('coord-self-card-topbar')?.classList.add('hidden');
       document.getElementById('coord-dash-top-left-btn')?.classList.add('hidden');
       document.getElementById('employee-screen').classList.add('hidden');
@@ -1672,6 +1807,20 @@
       document.getElementById('emp-zone-title').textContent = currentUser.zone_name;
       document.getElementById('emp-today-date').textContent = formatDateDDMMYYYY(todayStr);
       document.getElementById('emp-result-msg').classList.add('hidden');
+      const missingBanner = document.getElementById('emp-missing-punchout-banner');
+      const missingText = document.getElementById('emp-missing-punchout-text');
+      if (missingBanner && missingText) {
+        const missedLogs = attendanceData
+          .filter(a => a.emp_code === currentUser.emp_code && isPunchOutMissing(a))
+          .sort((a, b) => b.att_date.localeCompare(a.att_date));
+        if (missedLogs.length > 0) {
+          const recentDates = missedLogs.slice(0, 3).map(x => formatDateDDMMYYYY(x.att_date)).join(', ');
+          missingText.textContent = `You forgot to Punch Out on ${recentDates} (past 12:00 AM IST). Please contact your Coordinator/Admin to update your shift end time.`;
+          missingBanner.classList.remove('hidden');
+        } else {
+          missingBanner.classList.add('hidden');
+        }
+      }
       checkEmployeeDailyLockout();
     }
 
@@ -2270,7 +2419,7 @@
           const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === filterStartDate);
           const holidayNote = companyHolidays[filterStartDate];
           const defaultDesig = emp.role === 'coordinator' ? 'Coordinator' : (isAdmin ? 'Admin' : 'Employee');
-          const resolvedStatus = isAdmin ? '-' : (log ? log.status : (holidayNote ? 'Holiday' : 'Absent'));
+          const resolvedStatus = isAdmin ? '-' : (log ? log.status : (holidayNote ? 'Holiday' : '-'));
           const resolvedAddress = isAdmin ? '-' : (log ? (log.recorded_address || 'Location Captured') : (holidayNote ? `🎉 Company Holiday: ${holidayNote}` : 'Not Marked Yet'));
           const durObj = isAdmin ? { text: '-', minutes: 0, decimalHours: '0.00' } : computeWorkDurationInfo(log);
           rows.push({
@@ -2381,7 +2530,29 @@
     }
 
     function renderDashboard() {
-      const { rows, filteredEmployees, activeEmployees, selectedArea } = getFilteredAttendanceRows();
+      const { rows: rawRows, filteredEmployees, activeEmployees, selectedArea } = getFilteredAttendanceRows();
+
+      const missingOutCount = rawRows.filter(r => r.role !== 'admin' && isPunchOutMissing(r)).length;
+      const missingBtn = document.getElementById('btn-filter-missing-out');
+      const missingCountEl = document.getElementById('missing-out-count');
+      if (missingBtn && missingCountEl) {
+        missingCountEl.textContent = missingOutCount;
+        if (missingOutCount > 0 || filterMissingPunchOutOnly) {
+          missingBtn.classList.remove('hidden');
+        } else {
+          missingBtn.classList.add('hidden');
+          filterMissingPunchOutOnly = false;
+        }
+        missingBtn.className = filterMissingPunchOutOnly
+          ? 'px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold border-2 border-orange-600 bg-orange-600 text-white shadow-sm transition flex items-center justify-center gap-1 shrink-0'
+          : (missingOutCount > 0
+              ? 'px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold border border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100 transition flex items-center justify-center gap-1 shrink-0'
+              : 'hidden');
+      }
+
+      const rows = filterMissingPunchOutOnly
+        ? rawRows.filter(r => r.role !== 'admin' && isPunchOutMissing(r))
+        : rawRows;
 
       let presentCount = 0, leaveCount = 0, absentCount = 0;
       let rowsHTML = '';
@@ -2392,7 +2563,7 @@
         if (!isAdminRow) {
           if (r.status === 'Present') presentCount++;
           else if (r.status === 'Leave' || r.status === 'Holiday') leaveCount++;
-          else absentCount++;
+          else if (r.status === 'Absent') absentCount++;
         }
 
         const badgeClass = r.status === 'Present'
@@ -2403,7 +2574,7 @@
           ? 'bg-purple-100 text-purple-800 border-purple-300'
           : 'bg-rose-100 text-rose-800 border-rose-300';
 
-        const statusCellHTML = isAdminRow
+        const statusCellHTML = (isAdminRow || !r.status || r.status === '-')
           ? `<span class="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-[10px]">-</span>`
           : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}">${r.status}</span>`;
 
@@ -2415,13 +2586,17 @@
           ? `<button onclick="manualMarkPunchOut('${r.emp_code}', '${r.att_date}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-1 rounded font-bold text-[10px]" title="Mark Punch Out">Punch Out</button>`
           : '';
 
+        const pActiveRing = r.status === 'Present' ? 'ring-2 ring-emerald-500 bg-emerald-100' : 'bg-emerald-50 hover:bg-emerald-100';
+        const lActiveRing = r.status === 'Leave' ? 'ring-2 ring-amber-500 bg-amber-100' : 'bg-amber-50 hover:bg-amber-100';
+        const aActiveRing = r.status === 'Absent' ? 'ring-2 ring-rose-500 bg-rose-100' : 'bg-rose-50 hover:bg-rose-100';
+
         const actionCellHTML = disableActionButtons
           ? `<span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">-</span>`
           : `<div class="flex flex-wrap items-center justify-end gap-1">
-               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-1.5 py-1 rounded font-bold text-[10px]">Present</button>
+               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" title="Click to mark Present; click twice / double-click to undo" class="${pActiveRing} text-emerald-700 border border-emerald-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Present</button>
                ${punchOutActionBtn}
-               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Leave')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-1 rounded font-bold text-[10px]">Leave</button>
-               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-1.5 py-1 rounded font-bold text-[10px]">Absent</button>
+               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Leave')" title="Click to mark Leave; click twice / double-click to undo" class="${lActiveRing} text-amber-700 border border-amber-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Leave</button>
+               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" title="Click to mark Absent; click twice / double-click to undo" class="${aActiveRing} text-rose-700 border border-rose-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Absent</button>
              </div>`;
 
         const roleBadge = r.role === 'coordinator'
@@ -2434,7 +2609,9 @@
         if (!isAdminRow && r.att_time && r.att_time !== '-') {
           const outBadge = r.punch_out_time && r.punch_out_time !== '-'
             ? `<div class="text-[10.5px] font-bold text-rose-700 leading-tight mt-0.5">🔴 Out: ${r.punch_out_time}</div>`
-            : `<div class="text-[9.5px] font-semibold text-amber-600 leading-tight mt-0.5">⏳ Working (Active)</div>`;
+            : (isPunchOutMissing(r)
+                ? `<div class="inline-block mt-0.5 bg-orange-100 text-orange-900 border border-orange-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded leading-tight">⚠️ Punch Out Missing</div>`
+                : `<div class="text-[9.5px] font-semibold text-amber-600 leading-tight mt-0.5">⏳ Working (Active)</div>`);
           const durBadge = r.work_duration && r.work_duration !== '-'
             ? `<span class="inline-block mt-0.5 bg-indigo-100 text-indigo-900 border border-indigo-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded">⏱️ ${r.work_duration} (${r.work_decimal_hours}h)</span>`
             : '';
@@ -2546,10 +2723,10 @@
         let p = 0, l = 0, a = 0;
         zoneEmps.forEach(emp => {
           const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === filterStartDate);
-          const st = log ? log.status : 'Absent';
+          const st = log ? log.status : '-';
           if (st === 'Present') p++;
           else if (st === 'Leave') l++;
-          else a++;
+          else if (st === 'Absent') a++;
         });
 
         const cardStyle = selectedArea === z.zone_name
@@ -2652,6 +2829,20 @@
       renderDashboard();
     }
 
+    const manualUndoCooldownMap = {};
+
+    function hasEmployeeSelfPunch(log) {
+      if (!log) return false;
+      if (log._isManualFromBlank) return false;
+      if (log._preEditSnapshot) return true;
+      return Boolean(
+        (log.marked_by && log.marked_by.startsWith('Self')) ||
+        log.lat != null ||
+        log.photo_base64 != null ||
+        log.photo_url != null
+      );
+    }
+
     async function manualOverrideStatus(empCode, targetDate, newStatus) {
       const emp = usersData.find(u => u.emp_code === empCode);
       if (!emp || emp.role === 'admin') return;
@@ -2659,11 +2850,141 @@
         return showToastNotice("Coordinators can only mark their own attendance via the Punch In / Out camera screen.");
       }
 
+      const key = `${empCode}_${targetDate}`;
+      const nowMs = Date.now();
+
+      // Absorb the trailing click of a fast double-click right after an undo so it doesn't re-apply the status
+      if (manualUndoCooldownMap[key] && (nowMs - manualUndoCooldownMap[key] < 650)) {
+        return;
+      }
+
       const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
+      const isSelfPunchRecord = hasEmployeeSelfPunch(existingLog);
+
+      // CHECK IF THIS IS A REPEAT CLICK / DOUBLE-CLICK ON THE SAME STATUS OPTION TO UNDO/REMOVE
+      if (existingLog && existingLog.status === newStatus && (existingLog._isManualFromBlank || existingLog._isManualOverride || !isSelfPunchRecord)) {
+        // CASE 1: Originally Blank/Unmarked (Employee did NOT punch in) -> Remove completely with no mentioning
+        if (existingLog._isManualFromBlank || !isSelfPunchRecord) {
+          manualUndoCooldownMap[key] = nowMs;
+          attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
+          saveLocalFallback();
+          renderDashboard();
+          if (activeProfileEmpCode === empCode) {
+            renderEmployeeProfileHistory();
+            renderProfileCalendar();
+          }
+          if (isSupabaseConfigured) {
+            await supabaseClient.from('attendance_logs').delete().eq('emp_code', empCode).eq('att_date', targetDate);
+          }
+          return;
+        }
+
+        // CASE 2: Employee DID Punch In -> Undo within 30 seconds restores exact original punch-in, punch-out, photos, location & Self badge
+        if (isSelfPunchRecord && existingLog._preEditSnapshot) {
+          const elapsedMs = nowMs - (existingLog._manualOverrideTs || 0);
+          if (elapsedMs <= 30000) {
+            manualUndoCooldownMap[key] = nowMs;
+            const snap = existingLog._preEditSnapshot;
+            const restoredRecord = {
+              emp_code: emp.emp_code,
+              full_name: emp.full_name,
+              zone_name: emp.zone_name,
+              att_date: targetDate,
+              att_time: snap.att_time || '-',
+              punch_in_ts: snap.punch_in_ts || null,
+              punch_out_time: snap.punch_out_time || '-',
+              punch_out_ts: snap.punch_out_ts || null,
+              work_duration: snap.work_duration || '-',
+              work_minutes: snap.work_minutes || 0,
+              status: snap.status || 'Present',
+              lat: snap.lat ?? existingLog.lat ?? null,
+              lng: snap.lng ?? existingLog.lng ?? null,
+              punch_out_lat: snap.punch_out_lat ?? existingLog.punch_out_lat ?? null,
+              punch_out_lng: snap.punch_out_lng ?? existingLog.punch_out_lng ?? null,
+              recorded_address: snap.recorded_address || existingLog.recorded_address || 'Location Captured',
+              punch_out_address: snap.punch_out_address || existingLog.punch_out_address || '-',
+              photo_url: snap.photo_url ?? existingLog.photo_url ?? null,
+              photo_base64: snap.photo_base64 ?? existingLog.photo_base64 ?? null,
+              punch_out_photo: snap.punch_out_photo ?? existingLog.punch_out_photo ?? null,
+              marked_by: snap.marked_by || 'Self (Geo-Photo)',
+              edited_by: snap.edited_by || null,
+              edited_by_role: snap.edited_by_role || null,
+              edited_by_code: snap.edited_by_code || null,
+              edited_at: snap.edited_at || null
+            };
+
+            attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
+            attendanceData.unshift(restoredRecord);
+            saveLocalFallback();
+            renderDashboard();
+            if (activeProfileEmpCode === empCode) {
+              renderEmployeeProfileHistory();
+              renderProfileCalendar();
+            }
+            if (isSupabaseConfigured) {
+              const dbPayload = buildSupabaseCompatibleRecord(restoredRecord);
+              const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
+              if (error) {
+                await supabaseClient
+                  .from('attendance_logs')
+                  .update({
+                    att_time: dbPayload.att_time,
+                    status: dbPayload.status,
+                    recorded_address: dbPayload.recorded_address,
+                    marked_by: dbPayload.marked_by
+                  })
+                  .eq('emp_code', restoredRecord.emp_code)
+                  .eq('att_date', restoredRecord.att_date);
+              }
+            }
+            showToastNotice(`↩ Undid status change for ${emp.full_name} — original Punch In/Out, photos & location restored.`);
+            return;
+          } else {
+            return showToastNotice("⏱️ 30-second undo window has expired for this punch-in record.");
+          }
+        }
+      }
+
+      // APPLY MANUAL OVERRIDE (1st click)
       const nowObj = new Date();
       const nowTime = nowObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const editorRoleLabel = currentUser.role === 'admin' ? 'Admin' : 'Coordinator';
       const editorSummary = `${currentUser.full_name} (${currentUser.emp_code} - ${editorRoleLabel})`;
+
+      let preEditSnapshot = null;
+      let isManualFromBlank = false;
+
+      if (isSelfPunchRecord && existingLog) {
+        preEditSnapshot = existingLog._preEditSnapshot || {
+          emp_code: existingLog.emp_code,
+          full_name: existingLog.full_name,
+          zone_name: existingLog.zone_name,
+          att_date: existingLog.att_date,
+          att_time: existingLog.att_time,
+          punch_in_ts: existingLog.punch_in_ts || null,
+          punch_out_time: existingLog.punch_out_time || '-',
+          punch_out_ts: existingLog.punch_out_ts || null,
+          work_duration: existingLog.work_duration || '-',
+          work_minutes: existingLog.work_minutes || 0,
+          status: existingLog.status,
+          lat: existingLog.lat,
+          lng: existingLog.lng,
+          punch_out_lat: existingLog.punch_out_lat || null,
+          punch_out_lng: existingLog.punch_out_lng || null,
+          recorded_address: existingLog.recorded_address,
+          punch_out_address: existingLog.punch_out_address || '-',
+          photo_url: existingLog.photo_url || null,
+          photo_base64: existingLog.photo_base64 || null,
+          punch_out_photo: existingLog.punch_out_photo || null,
+          marked_by: existingLog.marked_by || 'Self (Geo-Photo)',
+          edited_by: existingLog.edited_by || null,
+          edited_by_role: existingLog.edited_by_role || null,
+          edited_by_code: existingLog.edited_by_code || null,
+          edited_at: existingLog.edited_at || null
+        };
+      } else {
+        isManualFromBlank = true;
+      }
 
       const record = {
         ...(existingLog || {}),
@@ -2671,22 +2992,55 @@
         full_name: emp.full_name,
         zone_name: emp.zone_name,
         att_date: targetDate,
-        att_time: newStatus === 'Present' ? (existingLog && existingLog.att_time && existingLog.att_time !== '-' ? existingLog.att_time : nowTime) : '-',
-        punch_in_ts: newStatus === 'Present' ? (existingLog?.punch_in_ts || nowObj.getTime()) : null,
-        punch_out_time: newStatus === 'Present' ? (existingLog?.punch_out_time || '-') : '-',
-        work_duration: newStatus === 'Present' ? (existingLog?.work_duration || '-') : '-',
-        work_minutes: newStatus === 'Present' ? (existingLog?.work_minutes || 0) : 0,
+        att_time: isSelfPunchRecord
+          ? (existingLog.att_time || nowTime)
+          : (newStatus === 'Present' ? (existingLog && existingLog.att_time && existingLog.att_time !== '-' ? existingLog.att_time : nowTime) : '-'),
+        punch_in_ts: isSelfPunchRecord
+          ? (existingLog.punch_in_ts || nowObj.getTime())
+          : (newStatus === 'Present' ? (existingLog?.punch_in_ts || nowObj.getTime()) : null),
+        punch_out_time: isSelfPunchRecord
+          ? (existingLog.punch_out_time || '-')
+          : (newStatus === 'Present' ? (existingLog?.punch_out_time || '-') : '-'),
+        punch_out_ts: isSelfPunchRecord ? (existingLog.punch_out_ts || null) : null,
+        work_duration: isSelfPunchRecord
+          ? (existingLog.work_duration || '-')
+          : (newStatus === 'Present' ? (existingLog?.work_duration || '-') : '-'),
+        work_minutes: isSelfPunchRecord
+          ? (existingLog.work_minutes || 0)
+          : (newStatus === 'Present' ? (existingLog?.work_minutes || 0) : 0),
         status: newStatus,
         lat: existingLog ? existingLog.lat : null,
         lng: existingLog ? existingLog.lng : null,
+        punch_out_lat: existingLog ? existingLog.punch_out_lat : null,
+        punch_out_lng: existingLog ? existingLog.punch_out_lng : null,
         recorded_address: (existingLog && existingLog.lat) ? existingLog.recorded_address : `Marked ${newStatus} by ${editorSummary}`,
+        punch_out_address: existingLog ? (existingLog.punch_out_address || '-') : '-',
+        photo_url: existingLog ? existingLog.photo_url : null,
         photo_base64: existingLog ? existingLog.photo_base64 : null,
+        punch_out_photo: existingLog ? existingLog.punch_out_photo : null,
         marked_by: editorSummary,
         edited_by: currentUser.full_name,
         edited_by_role: currentUser.role,
         edited_by_code: currentUser.emp_code,
-        edited_at: nowTime
+        edited_at: nowTime,
+        _isManualFromBlank: isManualFromBlank,
+        _isManualOverride: true,
+        _manualOverrideStatus: newStatus,
+        _manualOverrideTs: nowMs,
+        _preEditSnapshot: preEditSnapshot
       };
+
+      attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
+      attendanceData.unshift(record);
+      saveLocalFallback();
+      renderDashboard();
+      if (activeProfileEmpCode === empCode) {
+        renderEmployeeProfileHistory();
+        renderProfileCalendar();
+      }
+      if (isSelfPunchRecord) {
+        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} (Double-click / click ${newStatus} again within 30s to undo).`);
+      }
 
       if (isSupabaseConfigured) {
         const dbPayload = buildSupabaseCompatibleRecord(record);
@@ -2704,14 +3058,9 @@
             .eq('att_date', record.att_date);
         }
       }
-      attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
-      attendanceData.unshift(record);
-      saveLocalFallback();
-      renderDashboard();
-      showToastNotice(`✔ Attendance for ${emp.full_name} updated to ${newStatus} by ${currentUser.full_name}.`);
     }
 
-    async function manualMarkPunchOut(empCode, targetDate) {
+    function manualMarkPunchOut(empCode, targetDate) {
       const emp = usersData.find(u => u.emp_code === empCode);
       if (!emp || emp.role === 'admin') return;
       if (currentUser.role === 'coordinator' && (!canCoordinatorAccessEmployee(emp) || emp.role === 'coordinator' || emp.emp_code === currentUser.emp_code)) {
@@ -2723,16 +3072,52 @@
         return showToastNotice("Please mark the staff member Present (Punch In) first before marking Punch Out.");
       }
 
-      const nowObj = new Date();
-      const nowTime = nowObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('mpo-emp-code').value = empCode;
+      document.getElementById('mpo-att-date').value = targetDate;
+      document.getElementById('mpo-modal-title').textContent = `Mark Punch Out — ${emp.full_name}`;
+      document.getElementById('mpo-staff-summary').textContent = `${emp.full_name} (${emp.emp_code}) • Date: ${formatDateDDMMYYYY(targetDate)}`;
+      document.getElementById('mpo-punchin-summary').textContent = `🟢 Recorded Punch In: ${existingLog.att_time}`;
+
+      const timeInput = document.getElementById('mpo-time-input');
+      if (targetDate < getTodayISTDateStr()) {
+        timeInput.value = '18:00';
+      } else {
+        const now = new Date();
+        timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      }
+
+      document.getElementById('manual-punchout-modal').classList.remove('hidden');
+      timeInput.focus();
+    }
+
+    function closeManualPunchOutModal() {
+      document.getElementById('manual-punchout-modal').classList.add('hidden');
+    }
+
+    async function submitManualPunchOutModal(e) {
+      e.preventDefault();
+      const empCode = document.getElementById('mpo-emp-code').value;
+      const targetDate = document.getElementById('mpo-att-date').value;
+      const rawTime24 = document.getElementById('mpo-time-input').value;
+      if (!empCode || !targetDate || !rawTime24) return;
+
+      const emp = usersData.find(u => u.emp_code === empCode);
+      const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
+      if (!emp || !existingLog) return closeManualPunchOutModal();
+
+      const formattedOutTime = format24hTo12hAMPM(rawTime24);
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const editorRoleLabel = currentUser.role === 'admin' ? 'Admin' : 'Coordinator';
       const editorSummary = `${currentUser.full_name} (${currentUser.emp_code} - ${editorRoleLabel})`;
 
       const updatedTemp = {
         ...existingLog,
-        punch_out_time: nowTime,
-        punch_out_ts: nowObj.getTime(),
-        punch_out_address: existingLog.punch_out_address || `Marked Punch Out by ${editorSummary}`,
+        punch_out_time: formattedOutTime,
+        punch_in_ts: null,
+        punch_out_ts: null,
+        punch_out_address: existingLog.punch_out_address && existingLog.punch_out_address !== '-'
+          ? existingLog.punch_out_address
+          : `Marked Punch Out (${formattedOutTime}) by ${editorSummary}`,
         marked_by: editorSummary,
         edited_by: currentUser.full_name,
         edited_by_role: currentUser.role,
@@ -2746,6 +3131,17 @@
         work_minutes: durInfo.minutes
       };
 
+      attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
+      attendanceData.unshift(record);
+      saveLocalFallback();
+      closeManualPunchOutModal();
+      renderDashboard();
+      if (activeProfileEmpCode === empCode) {
+        renderEmployeeProfileHistory();
+        renderProfileCalendar();
+      }
+      showToastNotice(`✔ Punch Out marked for ${emp.full_name} at ${formattedOutTime} (Duration: ${durInfo.text})`);
+
       if (isSupabaseConfigured) {
         const dbPayload = buildSupabaseCompatibleRecord(record);
         const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
@@ -2762,12 +3158,6 @@
             .eq('att_date', record.att_date);
         }
       }
-
-      attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
-      attendanceData.unshift(record);
-      saveLocalFallback();
-      renderDashboard();
-      showToastNotice(`✔ Punch Out marked for ${emp.full_name} at ${nowTime} (Duration: ${durInfo.text})`);
     }
 
     let profCalYear = new Date().getFullYear();
@@ -3133,7 +3523,7 @@
           <tr onclick="selectProfileCalendarDate('${log.att_date}')" class="hover:bg-slate-50 cursor-pointer">
             <td data-label="Date" class="py-2 px-2 font-mono font-bold md:whitespace-nowrap"><div class="cell-val">${formatDateDDMMYYYY(log.att_date)}</div></td>
             <td data-label="Punch In" class="py-2 px-2 text-emerald-700 font-bold"><div class="cell-val">${log.att_time || '-'}</div></td>
-            <td data-label="Punch Out" class="py-2 px-2 text-rose-700 font-bold"><div class="cell-val">${log.punch_out_time || '-'}</div></td>
+            <td data-label="Punch Out" class="py-2 px-2 text-rose-700 font-bold"><div class="cell-val">${isPunchOutMissing(log) ? '<span class="inline-block bg-orange-100 text-orange-900 border border-orange-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded">⚠️ Missing</span>' : (log.punch_out_time || '-')}</div></td>
             <td data-label="Duration" class="py-2 px-2 font-extrabold text-indigo-800"><div class="cell-val">${durInfo.text}</div></td>
             <td data-label="Status" class="py-2 px-2"><div class="cell-val"><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badgeClass}">${log.status}</span></div></td>
             <td data-label="Location / Audit" class="py-2 px-2 break-words"><div class="cell-val">${displayReasonOrLoc}</div></td>
@@ -3162,7 +3552,8 @@
     }
 
     function exportFilteredToExcelCSV() {
-      const { rows, selectedArea } = getFilteredAttendanceRows();
+      const { rows: rawRows, selectedArea } = getFilteredAttendanceRows();
+      const rows = filterMissingPunchOutOnly ? rawRows.filter(r => r.role !== 'admin' && isPunchOutMissing(r)) : rawRows;
       if (!rows.length) return showToastNotice("No records found to export. Please select an Area or Role filter first.");
 
       const headers = [
@@ -3198,6 +3589,11 @@
           ? `${r.edited_by} (${r.edited_by_code || ''} ${r.edited_by_role || ''}) ${r.edited_at ? '@ ' + r.edited_at : ''}`.trim()
           : (r.marked_by || '-');
 
+        const missingOut = isPunchOutMissing(r);
+        const csvPunchOut = missingOut ? 'Punch Out Missing' : (r.punch_out_time || '-');
+        const csvDuration = missingOut ? 'Missing (0.00 hrs)' : (r.work_duration || '-');
+        const csvDecimalHrs = missingOut ? '0.00' : (r.work_decimal_hours || '0.00');
+
         csvLines.push([
           formatDateDDMMYYYY(r.att_date),
           r.emp_code,
@@ -3208,9 +3604,9 @@
           `"${excelSafeAadhaar}"`,
           r.status,
           `"${r.att_time || '-'}"`,
-          `"${r.punch_out_time || '-'}"`,
-          `"${r.work_duration || '-'}"`,
-          `"${r.work_decimal_hours || '0.00'}"`,
+          `"${csvPunchOut}"`,
+          `"${csvDuration}"`,
+          `"${csvDecimalHrs}"`,
           `"${(r.recorded_address || '').replace(/"/g, '""')}"`,
           `"${(r.punch_out_address || '-').replace(/"/g, '""')}"`,
           `"${editorCol.replace(/"/g, '""')}"`,
@@ -3260,6 +3656,11 @@
       let list = currentUser.role === 'coordinator'
         ? usersData.filter(u => u.role === 'employee' && canCoordinatorAccessEmployee(u))
         : usersData;
+
+      const selectedArea = document.getElementById('area-filter-select')?.value || 'ALL';
+      if (currentUser.role !== 'coordinator' && selectedArea && selectedArea !== 'ALL') {
+        list = list.filter(u => normZone(u.zone_name) === normZone(selectedArea));
+      }
 
       if (currentUser.role !== 'coordinator' && roleFilter !== 'ALL') {
         list = list.filter(u => u.role === roleFilter);
