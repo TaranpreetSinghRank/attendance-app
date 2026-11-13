@@ -1449,10 +1449,20 @@
       return null;
     }
 
-    // Hydrates Punch Out & Edit Audit fields from standard Supabase columns (att_time & recorded_address)
+    // Hydrates Punch Out & Edit Audit fields from direct Supabase columns (out_lat, out_lng, out_recorded_address, out_photo_url, work_duration) AND packed metadata
     function hydrateAttendanceLog(rawLog) {
       if (!rawLog) return rawLog;
       const log = { ...rawLog };
+
+      // 0. Read direct Supabase Punch-Out columns if populated
+      if (log.out_lat != null && log.punch_out_lat == null) log.punch_out_lat = Number(log.out_lat);
+      if (log.out_lng != null && log.punch_out_lng == null) log.punch_out_lng = Number(log.out_lng);
+      if (log.out_recorded_address && (!log.punch_out_address || log.punch_out_address === "-")) {
+        log.punch_out_address = log.out_recorded_address;
+      }
+      if (log.out_photo_url && !log.punch_out_photo) {
+        log.punch_out_photo = log.out_photo_url;
+      }
 
       // 1. Check if att_time contains combined "IN -> OUT" format (e.g. "09:30 AM -> 06:15 PM")
       if (typeof log.att_time === 'string' && log.att_time.includes('->')) {
@@ -1586,6 +1596,12 @@
         packedAddress = `${cleanInAddr} [PUNCH_OUT_META:${JSON.stringify(metaObj)}]`;
       }
 
+      const outLatVal = hasOut ? (record.punch_out_lat ?? record.out_lat ?? record.lat ?? null) : null;
+      const outLngVal = hasOut ? (record.punch_out_lng ?? record.out_lng ?? record.lng ?? null) : null;
+      const outAddrVal = hasOut ? ((record.punch_out_address && record.punch_out_address !== '-') ? record.punch_out_address : cleanInAddr) : null;
+      const outPhotoVal = hasOut ? (record.punch_out_photo || record.out_photo_url || null) : null;
+      const workDurVal = (record.work_duration && record.work_duration !== '-') ? record.work_duration : null;
+
       return {
         emp_code: record.emp_code,
         full_name: record.full_name,
@@ -1597,15 +1613,34 @@
         lng: record.lng,
         recorded_address: packedAddress,
         photo_base64: record.photo_base64 || record.photo_url || null,
-        marked_by: record.marked_by || 'Self (Geo-Photo)'
+        marked_by: record.marked_by || 'Self (Geo-Photo)',
+        out_lat: outLatVal,
+        out_lng: outLngVal,
+        out_recorded_address: outAddrVal,
+        out_photo_url: outPhotoVal,
+        work_duration: workDurVal
       };
     }
 
-    // Reliable Supabase attendance sync (handles tables with or without unique constraints)
+    // Reliable Supabase attendance sync: writes out_lat, out_lng, out_recorded_address, out_photo_url & work_duration directly (with automatic fallback)
     async function syncAttendanceRecordToSupabase(record) {
       if (!isSupabaseConfigured || !record) return;
       try {
         const dbPayload = buildSupabaseCompatibleRecord(record);
+        const basePayload = {
+          emp_code: dbPayload.emp_code,
+          full_name: dbPayload.full_name,
+          zone_name: dbPayload.zone_name,
+          att_date: dbPayload.att_date,
+          att_time: dbPayload.att_time,
+          status: dbPayload.status,
+          lat: dbPayload.lat,
+          lng: dbPayload.lng,
+          recorded_address: dbPayload.recorded_address,
+          photo_base64: dbPayload.photo_base64,
+          marked_by: dbPayload.marked_by
+        };
+
         const { error: upErr } = await supabaseClient
           .from('attendance_logs')
           .upsert(dbPayload, { onConflict: 'emp_code,att_date' });
@@ -1619,7 +1654,7 @@
           .limit(1);
 
         if (existingRows && existingRows.length > 0) {
-          await supabaseClient
+          const { error: updErr } = await supabaseClient
             .from('attendance_logs')
             .update({
               att_time: dbPayload.att_time,
@@ -1628,12 +1663,28 @@
               lng: dbPayload.lng,
               recorded_address: dbPayload.recorded_address,
               photo_base64: dbPayload.photo_base64,
-              marked_by: dbPayload.marked_by
+              marked_by: dbPayload.marked_by,
+              out_lat: dbPayload.out_lat,
+              out_lng: dbPayload.out_lng,
+              out_recorded_address: dbPayload.out_recorded_address,
+              out_photo_url: dbPayload.out_photo_url,
+              work_duration: dbPayload.work_duration
             })
             .eq('emp_code', record.emp_code)
             .eq('att_date', record.att_date);
+
+          if (updErr) {
+            await supabaseClient
+              .from('attendance_logs')
+              .update(basePayload)
+              .eq('emp_code', record.emp_code)
+              .eq('att_date', record.att_date);
+          }
         } else {
-          await supabaseClient.from('attendance_logs').insert([dbPayload]);
+          const { error: insErr } = await supabaseClient.from('attendance_logs').insert([dbPayload]);
+          if (insErr) {
+            await supabaseClient.from('attendance_logs').insert([basePayload]);
+          }
         }
       } catch (e) {
         console.warn("Attendance sync fallback:", e);
@@ -1692,7 +1743,7 @@
     function resolveAccessiblePhotoUrl(log, isPunchOut = false) {
       if (!log) return null;
       const raw = isPunchOut
-        ? (log.punch_out_photo || null)
+        ? (log.punch_out_photo || log.out_photo_url || null)
         : (log.photo_url || log.photo_base64);
       if (!raw) return null;
       if (raw.startsWith('data:image') || raw.startsWith('http://') || raw.startsWith('https://')) {
@@ -1718,6 +1769,9 @@
       if (Array.isArray(remoteList)) {
         remoteList.forEach(r => {
           const hydrated = hydrateAttendanceLog(r);
+          if (hydrated.punch_out_time && hydrated.punch_out_time !== '-' && r.out_lat == null && r.out_recorded_address == null && r.work_duration == null) {
+            syncAttendanceRecordToSupabase(hydrated);
+          }
           const key = `${hydrated.emp_code}_${hydrated.att_date}`;
           seenKeys.add(key);
           const localMatch = localMap[key];
