@@ -220,7 +220,7 @@
             <h3 id="emp-zone-title" class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1 truncate">Bareilly</h3>
           </div>
           <div class="text-right shrink-0">
-            <p class="text-xs text-slate-400">Date</p>
+            <p class="text-xs text-slate-400">Date (IST)</p>
             <p id="emp-today-date" class="text-sm font-bold text-slate-800"></p>
           </div>
         </div>
@@ -273,7 +273,6 @@
                 <p class="text-[11px] text-slate-500 mt-0.5 break-words" id="gps-coord-text">Waiting for GPS...</p>
               </div>
             </div>
-
           </div>
 
           <div class="relative rounded-2xl overflow-hidden bg-slate-950 aspect-[3/4] sm:aspect-[4/5] min-h-[280px] sm:min-h-[380px] max-h-[62dvh] w-full flex items-center justify-center border-2 border-slate-300 shadow-inner">
@@ -320,8 +319,6 @@
               </button>
             </div>
           </div>
-
-          <div id="emp-result-msg" class="hidden mt-4 p-3.5 rounded-xl text-xs font-bold"></div>
         </div>
       </div>
     </section>
@@ -370,7 +367,7 @@
 
         <div class="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div class="flex flex-wrap items-center gap-1.5">
-            <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1">📅 Period:</span>
+            <span class="text-[11px] font-extrabold uppercase text-slate-500 mr-1">📅 Period (IST):</span>
             <button onclick="setDatePreset('TODAY')" id="preset-TODAY" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-700 text-white">Today</button>
             <button onclick="setDatePreset('YESTERDAY')" id="preset-YESTERDAY" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Yesterday</button>
             <button onclick="setDatePreset('LAST7')" id="preset-LAST7" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200">Last 7 Days</button>
@@ -897,6 +894,7 @@
       clearTimeout(t._timer);
       t._timer = setTimeout(() => { t.classList.add('hidden'); }, 3200);
     }
+
     let pendingConfirmResolver = null;
     function askDeleteConfirmation(title, message) {
       return new Promise((resolve) => {
@@ -914,24 +912,70 @@
         res(Boolean(choice));
       }
     }
+
     const SUPABASE_URL = "https://whsfpsrevtichsejdggw.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indoc2Zwc3JldnRpY2hzZWpkZ2d3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNTI5OTksImV4cCI6MjEwODgyODk5OX0.iTjdf_0YFTdX38SZNoWBheANyx0sde1Z2xYJQayGGes";
 
     const isSupabaseConfigured = SUPABASE_URL.startsWith("https://") && SUPABASE_ANON_KEY.length > 20;
     const supabaseClient = isSupabaseConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-    function getTodayISTDateStr() {
+    // FIX #2: All date/time helpers strictly follow IST (Asia/Kolkata)
+    function formatISTDateStr(dateObj = new Date()) {
       try {
         return new Intl.DateTimeFormat('en-CA', {
           timeZone: 'Asia/Kolkata',
           year: 'numeric',
           month: '2-digit',
           day: '2-digit'
-        }).format(new Date());
+        }).format(dateObj);
       } catch (e) {
-        const istMs = Date.now() + (5.5 * 60 * 60 * 1000);
+        const istMs = dateObj.getTime() + (5.5 * 60 * 60 * 1000);
         return new Date(istMs).toISOString().split('T')[0];
       }
+    }
+
+    function getTodayISTDateStr() {
+      return formatISTDateStr(new Date());
+    }
+
+    // FIX #4: Consistent IST 12-hour time string ("09:30 AM") across all devices/locales
+    function getCurrentISTTime12h(dateObj = new Date()) {
+      try {
+        return new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }).format(dateObj).replace(/\u202f/g, ' ').trim();
+      } catch (e) {
+        const ist = new Date(dateObj.getTime() + 5.5 * 60 * 60 * 1000);
+        let h = ist.getUTCHours();
+        const m = String(ist.getUTCMinutes()).padStart(2, '0');
+        const p = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${String(h).padStart(2, '0')}:${m} ${p}`;
+      }
+    }
+
+    function getCurrentISTTime24h(dateObj = new Date()) {
+      try {
+        return new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).format(dateObj).trim();
+      } catch (e) {
+        const ist = new Date(dateObj.getTime() + 5.5 * 60 * 60 * 1000);
+        return `${String(ist.getUTCHours()).padStart(2, '0')}:${String(ist.getUTCMinutes()).padStart(2, '0')}`;
+      }
+    }
+
+    function formatUTCDateYMD(utcDateObj) {
+      const y = utcDateObj.getUTCFullYear();
+      const m = String(utcDateObj.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(utcDateObj.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     }
 
     function isPunchOutMissing(logOrRow) {
@@ -953,15 +997,15 @@
       return `${String(h).padStart(2, '0')}:${m} ${period}`;
     }
 
-    const todayStr = getTodayISTDateStr();
     let filterMissingPunchOutOnly = false;
 
     function toggleMissingPunchOutFilter() {
       filterMissingPunchOutOnly = !filterMissingPunchOutOnly;
       renderDashboard();
     }
-    let filterStartDate = todayStr;
-    let filterEndDate = todayStr;
+
+    let filterStartDate = getTodayISTDateStr();
+    let filterEndDate = getTodayISTDateStr();
 
     // Converts any YYYY-MM-DD string into DD-MM-YYYY format everywhere in the UI & Excel
     function formatDateDDMMYYYY(dateStr) {
@@ -980,12 +1024,22 @@
 
     function formatNowDDMMYYYYTime() {
       const now = new Date();
-      const dd = String(now.getDate()).padStart(2, '0');
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const yyyy = now.getFullYear();
-      const timePart = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      return `${dd}-${mm}-${yyyy}, ${timePart}`;
+      const istYMD = formatISTDateStr(now);
+      let timePart = '';
+      try {
+        timePart = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Kolkata',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }).format(now).replace(/\u202f/g, ' ').trim();
+      } catch (e) {
+        timePart = getCurrentISTTime12h(now);
+      }
+      return `${formatDateDDMMYYYY(istYMD)}, ${timePart}`;
     }
+
     let activeProfileEmpCode = null;
     let roleFilterTouched = false;
     let currentCoordinatorMode = 'SELF_ATTENDANCE'; // 'SELF_ATTENDANCE' | 'TEAM_ATTENDANCE' | 'TEAM_EMPLOYEES'
@@ -1305,7 +1359,7 @@
       Sunday: '#e2e8f0'   // Toned-down Slate/Warm Gray for Sundays
     };
     let sectionColors = { ...DEFAULT_SECTION_COLORS };
-    let selectedSideCalDate = todayStr;
+    let selectedSideCalDate = getTodayISTDateStr();
     let currentUser = null;
     let currentGPS = { lat: null, lng: null, address: "Fetching street address..." };
     let cameraStream = null;
@@ -1315,8 +1369,11 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
-      document.getElementById('filter-date-start').value = todayStr;
-      document.getElementById('filter-date-end').value = todayStr;
+      const todayIST = getTodayISTDateStr();
+      filterStartDate = todayIST;
+      filterEndDate = todayIST;
+      document.getElementById('filter-date-start').value = todayIST;
+      document.getElementById('filter-date-end').value = todayIST;
 
       try {
         localStorage.removeItem('geo_zones_v3');
@@ -1372,19 +1429,20 @@
 
     let empPunchMode = 'IN'; // 'IN' or 'OUT'
 
+    // FIX #4: Resilient time parser supporting standard "09:30 AM", "09:30 a.m.", "09.30 AM", and 24-hour "18:00"
     function parseTimeStrToMinutes(timeStr) {
       if (!timeStr || timeStr === '-') return null;
-      const clean = timeStr.toString().trim();
-      const ampmMatch = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+      const clean = timeStr.toString().trim().replace(/\u202f/g, ' ');
+      const ampmMatch = clean.match(/^(\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\s*(a\.?m\.?|p\.?m\.?)$/i);
       if (ampmMatch) {
         let hrs = parseInt(ampmMatch[1], 10);
         const mins = parseInt(ampmMatch[2], 10);
-        const period = ampmMatch[3].toUpperCase();
+        const period = ampmMatch[3].replace(/\./g, '').toUpperCase();
         if (period === 'PM' && hrs < 12) hrs += 12;
         if (period === 'AM' && hrs === 12) hrs = 0;
         return hrs * 60 + mins;
       }
-      const h24Match = clean.match(/^(\d{1,2}):(\d{2})/);
+      const h24Match = clean.match(/^(\d{1,2})[:.](\d{2})/);
       if (h24Match) {
         return parseInt(h24Match[1], 10) * 60 + parseInt(h24Match[2], 10);
       }
@@ -1428,6 +1486,7 @@
               if (meta.editedBy && !log.edited_by) log.edited_by = meta.editedBy;
               if (meta.editedByRole && !log.edited_by_role) log.edited_by_role = meta.editedByRole;
               if (meta.editedByCode && !log.edited_by_code) log.edited_by_code = meta.editedByCode;
+              if (meta.editedAction && !log.edited_action) log.edited_action = meta.editedAction;
               if (meta.editedAt && !log.edited_at) log.edited_at = meta.editedAt;
               if (meta.mBlank) log._isManualFromBlank = true;
               if (meta.mOver) {
@@ -1459,7 +1518,7 @@
       return log;
     }
 
-    // Packs Punch Out and Edit Audit metadata into standard Supabase columns
+    // FIX #5: Packs Punch Out, Edit Audit (including action), and Photo URLs in preSnap into standard Supabase columns
     function buildSupabaseCompatibleRecord(record) {
       const hasOut = Boolean(record.punch_out_time && record.punch_out_time !== '-');
       const cleanInTime = (record.att_time || '-').split('->')[0].trim();
@@ -1487,6 +1546,7 @@
       if (record.edited_by) metaObj.editedBy = record.edited_by;
       if (record.edited_by_role) metaObj.editedByRole = record.edited_by_role;
       if (record.edited_by_code) metaObj.editedByCode = record.edited_by_code;
+      if (record.edited_action) metaObj.editedAction = record.edited_action;
       if (record.edited_at) metaObj.editedAt = record.edited_at;
       if (record._isManualFromBlank) metaObj.mBlank = true;
       if (record._isManualOverride) {
@@ -1495,25 +1555,30 @@
         metaObj.mTs = record._manualOverrideTs || 0;
       }
       if (record._preEditSnapshot) {
+        const s = record._preEditSnapshot;
         metaObj.preSnap = {
-          status: record._preEditSnapshot.status,
-          att_time: record._preEditSnapshot.att_time,
-          punch_in_ts: record._preEditSnapshot.punch_in_ts || null,
-          punch_out_time: record._preEditSnapshot.punch_out_time || '-',
-          punch_out_ts: record._preEditSnapshot.punch_out_ts || null,
-          work_duration: record._preEditSnapshot.work_duration || '-',
-          work_minutes: record._preEditSnapshot.work_minutes || 0,
-          lat: record._preEditSnapshot.lat || null,
-          lng: record._preEditSnapshot.lng || null,
-          punch_out_lat: record._preEditSnapshot.punch_out_lat || null,
-          punch_out_lng: record._preEditSnapshot.punch_out_lng || null,
-          recorded_address: record._preEditSnapshot.recorded_address || '',
-          punch_out_address: record._preEditSnapshot.punch_out_address || '-',
-          marked_by: record._preEditSnapshot.marked_by || 'Self (Geo-Photo)',
-          edited_by: record._preEditSnapshot.edited_by || null,
-          edited_by_role: record._preEditSnapshot.edited_by_role || null,
-          edited_by_code: record._preEditSnapshot.edited_by_code || null,
-          edited_at: record._preEditSnapshot.edited_at || null
+          status: s.status,
+          att_time: s.att_time,
+          punch_in_ts: s.punch_in_ts || null,
+          punch_out_time: s.punch_out_time || '-',
+          punch_out_ts: s.punch_out_ts || null,
+          work_duration: s.work_duration || '-',
+          work_minutes: s.work_minutes || 0,
+          lat: s.lat || null,
+          lng: s.lng || null,
+          punch_out_lat: s.punch_out_lat || null,
+          punch_out_lng: s.punch_out_lng || null,
+          recorded_address: s.recorded_address || '',
+          punch_out_address: s.punch_out_address || '-',
+          photo_url: (s.photo_url && s.photo_url.startsWith('http')) ? s.photo_url : null,
+          photo_base64: (s.photo_base64 && s.photo_base64.startsWith('http')) ? s.photo_base64 : null,
+          punch_out_photo: (s.punch_out_photo && s.punch_out_photo.startsWith('http')) ? s.punch_out_photo : null,
+          marked_by: s.marked_by || 'Self (Geo-Photo)',
+          edited_by: s.edited_by || null,
+          edited_by_role: s.edited_by_role || null,
+          edited_by_code: s.edited_by_code || null,
+          edited_action: s.edited_action || null,
+          edited_at: s.edited_at || null
         };
       }
 
@@ -1534,6 +1599,45 @@
         photo_base64: record.photo_base64 || record.photo_url || null,
         marked_by: record.marked_by || 'Self (Geo-Photo)'
       };
+    }
+
+    // Reliable Supabase attendance sync (handles tables with or without unique constraints)
+    async function syncAttendanceRecordToSupabase(record) {
+      if (!isSupabaseConfigured || !record) return;
+      try {
+        const dbPayload = buildSupabaseCompatibleRecord(record);
+        const { error: upErr } = await supabaseClient
+          .from('attendance_logs')
+          .upsert(dbPayload, { onConflict: 'emp_code,att_date' });
+        if (!upErr) return;
+
+        const { data: existingRows } = await supabaseClient
+          .from('attendance_logs')
+          .select('emp_code')
+          .eq('emp_code', record.emp_code)
+          .eq('att_date', record.att_date)
+          .limit(1);
+
+        if (existingRows && existingRows.length > 0) {
+          await supabaseClient
+            .from('attendance_logs')
+            .update({
+              att_time: dbPayload.att_time,
+              status: dbPayload.status,
+              lat: dbPayload.lat,
+              lng: dbPayload.lng,
+              recorded_address: dbPayload.recorded_address,
+              photo_base64: dbPayload.photo_base64,
+              marked_by: dbPayload.marked_by
+            })
+            .eq('emp_code', record.emp_code)
+            .eq('att_date', record.att_date);
+        } else {
+          await supabaseClient.from('attendance_logs').insert([dbPayload]);
+        }
+      } catch (e) {
+        console.warn("Attendance sync fallback:", e);
+      }
     }
 
     function computeWorkDurationInfo(log) {
@@ -1601,6 +1705,58 @@
       return raw;
     }
 
+    // FIX #1: Merge remote records without erasing other areas or unsynced local records
+    function mergeRemoteAndLocalAttendance(remoteList, zoneFilter = null) {
+      const localMap = {};
+      attendanceData.forEach(item => {
+        localMap[`${item.emp_code}_${item.att_date}`] = hydrateAttendanceLog(item);
+      });
+
+      const seenKeys = new Set();
+      const merged = [];
+
+      if (Array.isArray(remoteList)) {
+        remoteList.forEach(r => {
+          const hydrated = hydrateAttendanceLog(r);
+          const key = `${hydrated.emp_code}_${hydrated.att_date}`;
+          seenKeys.add(key);
+          const localMatch = localMap[key];
+          if (localMatch) {
+            // Preserve local Punch Out, photos, or recent manual edits if not yet in remote row
+            if (localMatch.punch_out_time && localMatch.punch_out_time !== '-' && (!hydrated.punch_out_time || hydrated.punch_out_time === '-')) {
+              Object.assign(hydrated, localMatch);
+            }
+            if (localMatch.punch_out_photo && !hydrated.punch_out_photo) {
+              hydrated.punch_out_photo = localMatch.punch_out_photo;
+            }
+            if (localMatch.photo_base64 && !hydrated.photo_base64) {
+              hydrated.photo_base64 = localMatch.photo_base64;
+            }
+            if (localMatch.photo_url && !hydrated.photo_url) {
+              hydrated.photo_url = localMatch.photo_url;
+            }
+            if (localMatch._isManualOverride && localMatch._manualOverrideTs && (!hydrated._manualOverrideTs || localMatch._manualOverrideTs >= hydrated._manualOverrideTs)) {
+              Object.assign(hydrated, localMatch);
+            }
+          }
+          merged.push(hydrated);
+        });
+      }
+
+      // Keep any local records (including other zones or newly created local records) not in remoteList
+      Object.keys(localMap).forEach(k => {
+        if (!seenKeys.has(k)) {
+          const item = localMap[k];
+          if (!zoneFilter || normZone(item.zone_name) !== normZone(zoneFilter) || item.emp_code === currentUser?.emp_code || item._isManualOverride || item.att_date === getTodayISTDateStr()) {
+            merged.push(item);
+          }
+        }
+      });
+
+      merged.sort((a, b) => (b.att_date || '').localeCompare(a.att_date || ''));
+      return merged;
+    }
+
     async function loadAllData() {
       if (!isSupabaseConfigured) return;
       try {
@@ -1613,41 +1769,21 @@
             supabaseClient.from('app_users').select('*').eq('zone_name', myZone),
             supabaseClient.from('attendance_logs').select('*').eq('zone_name', myZone).order('att_date', { ascending: false }).limit(300)
           ]);
-          if (zRes.data?.length) zonesData = zRes.data.filter(z => !isPanIndiaZone(z.zone_name));
-          if (uRes.data) {
-            const myEmployees = uRes.data.filter(u => u.emp_code !== currentUser.emp_code && canCoordinatorAccessEmployee(u));
-            usersData = [currentUser, ...myEmployees];
-          } else {
-            usersData = [currentUser, ...usersData.filter(u => u.emp_code !== currentUser.emp_code && canCoordinatorAccessEmployee(u))];
+          if (zRes.data?.length) {
+            const otherZones = zonesData.filter(z => normZone(z.zone_name) !== normZone(myZone));
+            zonesData = [...zRes.data.filter(z => !isPanIndiaZone(z.zone_name)), ...otherZones];
           }
-          const allowedCodes = new Set([
-            currentUser.emp_code,
-            ...usersData.filter(u => canCoordinatorAccessEmployee(u)).map(u => u.emp_code)
-          ]);
+          if (uRes.data?.length) {
+            const targetZ = normZone(myZone);
+            const otherZoneUsers = usersData.filter(u => normZone(u.zone_name) !== targetZ && u.emp_code !== currentUser.emp_code);
+            const myZoneUsers = uRes.data.filter(u => u.emp_code !== currentUser.emp_code && canCoordinatorAccessEmployee(u));
+            usersData = [currentUser, ...myZoneUsers, ...otherZoneUsers];
+          }
+          normalizeAndMigrateUsersAndZones();
           if (aRes.data) {
-            const localMap = {};
-            attendanceData.forEach(item => { localMap[`${item.emp_code}_${item.att_date}`] = hydrateAttendanceLog(item); });
-            attendanceData = aRes.data
-              .map(r => {
-                const hydrated = hydrateAttendanceLog(r);
-                const localMatch = localMap[`${hydrated.emp_code}_${hydrated.att_date}`];
-                if (localMatch && localMatch.punch_out_time && localMatch.punch_out_time !== '-' && (!hydrated.punch_out_time || hydrated.punch_out_time === '-')) {
-                  return { ...hydrated, ...localMatch };
-                }
-                if (localMatch && localMatch.punch_out_photo && !hydrated.punch_out_photo) {
-                  hydrated.punch_out_photo = localMatch.punch_out_photo;
-                }
-                return hydrated;
-              })
-              .filter(a => allowedCodes.has(a.emp_code) && normZone(a.zone_name) === normZone(myZone));
-            // Keep local coordinator self-attendance if not yet in remote list
-            const selfTodayKey = `${currentUser.emp_code}_${todayStr}`;
-            if (localMap[selfTodayKey] && !attendanceData.some(a => a.emp_code === currentUser.emp_code && a.att_date === todayStr)) {
-              attendanceData.unshift(localMap[selfTodayKey]);
-            }
-          } else {
-            attendanceData = attendanceData.map(hydrateAttendanceLog).filter(a => allowedCodes.has(a.emp_code) && normZone(a.zone_name) === normZone(myZone));
+            attendanceData = mergeRemoteAndLocalAttendance(aRes.data, myZone);
           }
+          saveLocalFallback();
           renderDashboard();
         } else {
           const [zRes, uRes, aRes] = await Promise.all([
@@ -1661,19 +1797,7 @@
           if (uRes.data?.length) usersData = uRes.data;
           normalizeAndMigrateUsersAndZones();
           if (aRes.data) {
-            const localMap = {};
-            attendanceData.forEach(item => { localMap[`${item.emp_code}_${item.att_date}`] = hydrateAttendanceLog(item); });
-            attendanceData = aRes.data.map(r => {
-              const hydrated = hydrateAttendanceLog(r);
-              const localMatch = localMap[`${hydrated.emp_code}_${hydrated.att_date}`];
-              if (localMatch && localMatch.punch_out_time && localMatch.punch_out_time !== '-' && (!hydrated.punch_out_time || hydrated.punch_out_time === '-')) {
-                return { ...hydrated, ...localMatch };
-              }
-              if (localMatch && localMatch.punch_out_photo && !hydrated.punch_out_photo) {
-                hydrated.punch_out_photo = localMatch.punch_out_photo;
-              }
-              return hydrated;
-            });
+            attendanceData = mergeRemoteAndLocalAttendance(aRes.data, null);
           }
           saveLocalFallback();
           if (currentUser && currentUser.role === 'admin') {
@@ -1694,19 +1818,6 @@
         localStorage.setItem('geo_holidays_v6', JSON.stringify(companyHolidays));
         localStorage.setItem('geo_sec_colors_v6', JSON.stringify(sectionColors));
       } catch (e) {}
-    }
-
-    function handleRefreshAction() {
-      const areaSelect = document.getElementById('area-filter-select');
-      if (areaSelect && currentUser?.role === 'admin') {
-        areaSelect.value = "ALL"; 
-      }
-      roleFilterTouched = false;
-      const topRoleSel = document.getElementById('global-role-filter');
-      if (topRoleSel) topRoleSel.value = 'ALL';
-      clearGlobalSearch();
-      loadAllData();
-      renderDashboard();
     }
 
     function quickLogin(code) {
@@ -1761,13 +1872,7 @@
       } else if (user.role === 'coordinator') {
         coordSelfCardTopbar?.classList.remove('hidden');
         coordDashTopBtn?.classList.remove('hidden');
-
-        usersData = [currentUser, ...usersData.filter(u => u.emp_code !== currentUser.emp_code && canCoordinatorAccessEmployee(u))];
-        const allowedCodes = new Set([
-          currentUser.emp_code,
-          ...usersData.filter(u => canCoordinatorAccessEmployee(u)).map(u => u.emp_code)
-        ]);
-        attendanceData = attendanceData.filter(a => allowedCodes.has(a.emp_code) && normZone(a.zone_name) === normZone(currentUser.zone_name));
+        // FIX #1: Keep all areas in memory/localStorage; Coordinator view filters handle screen isolation
         await loadAllData();
         switchCoordinatorMode('SELF_ATTENDANCE');
       } else {
@@ -1805,8 +1910,7 @@
         }
       }
       document.getElementById('emp-zone-title').textContent = currentUser.zone_name;
-      document.getElementById('emp-today-date').textContent = formatDateDDMMYYYY(todayStr);
-      document.getElementById('emp-result-msg').classList.add('hidden');
+      document.getElementById('emp-today-date').textContent = formatDateDDMMYYYY(getTodayISTDateStr());
       const missingBanner = document.getElementById('emp-missing-punchout-banner');
       const missingText = document.getElementById('emp-missing-punchout-text');
       if (missingBanner && missingText) {
@@ -1870,7 +1974,8 @@
     }
 
     function checkEmployeeDailyLockout() {
-      const existingToday = attendanceData.find(a => a.emp_code === currentUser.emp_code && a.att_date === todayStr);
+      const todayIST = getTodayISTDateStr();
+      const existingToday = attendanceData.find(a => a.emp_code === currentUser.emp_code && a.att_date === todayIST);
       const lockoutCard = document.getElementById('emp-lockout-card');
       const captureWorkflow = document.getElementById('emp-capture-workflow');
       const badgeText = document.getElementById('lockout-badge-text');
@@ -1886,9 +1991,11 @@
         captureWorkflow.classList.add('hidden');
         lockoutCard.classList.remove('hidden');
 
+        const hasPunchedIn = Boolean(existingToday.att_time && existingToday.att_time !== '-');
         const hasPunchedOut = Boolean(existingToday.punch_out_time && existingToday.punch_out_time !== '-');
-        document.getElementById('lockout-details').textContent =
-          `🟢 Punch In: ${existingToday.att_time || '-'} • Location: ${existingToday.recorded_address || 'Captured'}`;
+        document.getElementById('lockout-details').textContent = hasPunchedIn
+          ? `🟢 Punch In: ${existingToday.att_time} • Status: ${existingToday.status} • Location: ${existingToday.recorded_address || 'Captured'}`
+          : `Status: ${existingToday.status} • ${existingToday.recorded_address || 'Marked by Coordinator/Admin'}`;
 
         const inImgUrl = resolveAccessiblePhotoUrl(existingToday, false);
         const lockImg = document.getElementById('lockout-photo');
@@ -1901,7 +2008,7 @@
 
         if (hasPunchedOut) {
           const durInfo = computeWorkDurationInfo(existingToday);
-          badgeText.textContent = 'Shift Completed (Punch In & Out Done)';
+          badgeText.textContent = `Shift Completed • Status: ${existingToday.status}`;
           badgeText.className = 'bg-indigo-700 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider';
           headingText.textContent = 'Attendance & Work Hours Recorded for Today';
           outDetailsEl.textContent = `🔴 Punch Out: ${existingToday.punch_out_time} • Location: ${existingToday.punch_out_address || existingToday.recorded_address || 'Captured'}`;
@@ -1919,13 +2026,13 @@
             photoOutWrap.classList.add('hidden');
           }
         } else {
-          badgeText.textContent = 'Punched In — Active Shift';
+          badgeText.textContent = hasPunchedIn ? `Punched In — Active Shift (${existingToday.status})` : `Attendance Status: ${existingToday.status}`;
           badgeText.className = 'bg-emerald-700 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider';
-          headingText.textContent = 'You are Currently Punched In';
+          headingText.textContent = hasPunchedIn ? 'You are Currently Punched In' : `Marked ${existingToday.status} for Today`;
           outDetailsEl.classList.add('hidden');
           durPillEl.classList.add('hidden');
           photoOutWrap.classList.add('hidden');
-          if (existingToday.status === 'Present') {
+          if (hasPunchedIn) {
             punchOutBtnWrap.classList.remove('hidden');
           } else {
             punchOutBtnWrap.classList.add('hidden');
@@ -2061,6 +2168,7 @@
       document.getElementById('btn-camera-switch')?.classList.add('hidden');
     }
 
+    // FIX #3: Mirror captured canvas frame when using Front Camera while keeping bottom text stamp un-mirrored
     function capturePreviewPhoto() {
       if (!currentGPS.lat) return showToastNotice("Please wait for GPS.");
 
@@ -2071,7 +2179,15 @@
       const ctx = canvas.getContext('2d');
 
       if (cameraStream && !video.classList.contains('hidden')) {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (currentCameraFacing === 'user') {
+          ctx.save();
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        } else {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        }
       } else {
         ctx.fillStyle = "#0f172a";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -2122,12 +2238,13 @@
       submitBtn.textContent = "Uploading...";
 
       const nowObj = new Date();
-      const nowTime = nowObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const todayIST = formatISTDateStr(nowObj);
+      const nowTime = getCurrentISTTime12h(nowObj);
       let publicImageUrl = null;
 
       if (isSupabaseConfigured && pendingPhotoBlob) {
         const suffix = empPunchMode === 'OUT' ? 'OUT' : 'IN';
-        const filePath = `${todayStr}/${currentUser.emp_code}_${suffix}_${Date.now()}.jpg`;
+        const filePath = `${todayIST}/${currentUser.emp_code}_${suffix}_${Date.now()}.jpg`;
         const { error: upErr } = await supabaseClient.storage
           .from('attendance-selfies')
           .upload(filePath, pendingPhotoBlob, { contentType: 'image/jpeg', upsert: true });
@@ -2138,7 +2255,7 @@
         }
       }
 
-      const existingToday = attendanceData.find(a => a.emp_code === currentUser.emp_code && a.att_date === todayStr);
+      const existingToday = attendanceData.find(a => a.emp_code === currentUser.emp_code && a.att_date === todayIST);
       let record;
 
       if (empPunchMode === 'OUT' && existingToday) {
@@ -2162,7 +2279,7 @@
           emp_code: currentUser.emp_code,
           full_name: currentUser.full_name,
           zone_name: currentUser.zone_name,
-          att_date: todayStr,
+          att_date: todayIST,
           att_time: nowTime,
           punch_in_ts: nowObj.getTime(),
           punch_out_time: '-',
@@ -2178,26 +2295,11 @@
         };
       }
 
-      if (isSupabaseConfigured) {
-        const dbPayload = buildSupabaseCompatibleRecord(record);
-        const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
-        if (error) {
-          await supabaseClient
-            .from('attendance_logs')
-            .update({
-              att_time: dbPayload.att_time,
-              status: dbPayload.status,
-              recorded_address: dbPayload.recorded_address,
-              marked_by: dbPayload.marked_by
-            })
-            .eq('emp_code', record.emp_code)
-            .eq('att_date', record.att_date);
-        }
-      }
-
-      attendanceData = attendanceData.filter(a => !(a.emp_code === record.emp_code && a.att_date === todayStr));
+      attendanceData = attendanceData.filter(a => !(a.emp_code === record.emp_code && a.att_date === todayIST));
       attendanceData.unshift(record);
       saveLocalFallback();
+
+      await syncAttendanceRecordToSupabase(record);
 
       submitBtn.disabled = false;
       submitBtn.textContent = "Confirm & Submit";
@@ -2205,26 +2307,29 @@
       showToastNotice(empPunchMode === 'OUT' ? `✔ Punch Out Recorded! Total Worked: ${record.work_duration}` : `✔ Punch In Recorded at ${nowTime}!`);
     }
 
+    // FIX #2: Period preset calculation strictly in IST (never shifted by UTC)
     function setDatePreset(preset) {
-      const now = new Date();
-      let start = new Date();
-      let end = new Date();
+      const todayIST = getTodayISTDateStr();
+      const [y, m, d] = todayIST.split('-').map(n => parseInt(n, 10));
+
+      let startDateObj = new Date(Date.UTC(y, m - 1, d));
+      let endDateObj = new Date(Date.UTC(y, m - 1, d));
 
       if (preset === 'YESTERDAY') {
-        start.setDate(now.getDate() - 1);
-        end.setDate(now.getDate() - 1);
+        startDateObj = new Date(Date.UTC(y, m - 1, d - 1));
+        endDateObj = new Date(Date.UTC(y, m - 1, d - 1));
       } else if (preset === 'LAST7') {
-        start.setDate(now.getDate() - 6);
+        startDateObj = new Date(Date.UTC(y, m - 1, d - 6));
       } else if (preset === 'THIS_MONTH') {
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        startDateObj = new Date(Date.UTC(y, m - 1, 1));
+        endDateObj = new Date(Date.UTC(y, m, 0));
       } else if (preset === 'LAST_MONTH') {
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        end = new Date(now.getFullYear(), now.getMonth(), 0);
+        startDateObj = new Date(Date.UTC(y, m - 2, 1));
+        endDateObj = new Date(Date.UTC(y, m - 1, 0));
       }
 
-      filterStartDate = start.toISOString().split('T')[0];
-      filterEndDate = end.toISOString().split('T')[0];
+      filterStartDate = formatUTCDateYMD(startDateObj);
+      filterEndDate = formatUTCDateYMD(endDateObj);
       document.getElementById('filter-date-start').value = filterStartDate;
       document.getElementById('filter-date-end').value = filterEndDate;
 
@@ -2237,8 +2342,9 @@
     }
 
     function onCustomDateChange() {
-      filterStartDate = document.getElementById('filter-date-start').value || todayStr;
-      filterEndDate = document.getElementById('filter-date-end').value || todayStr;
+      const todayIST = getTodayISTDateStr();
+      filterStartDate = document.getElementById('filter-date-start').value || todayIST;
+      filterEndDate = document.getElementById('filter-date-end').value || todayIST;
       if (filterStartDate > filterEndDate) filterEndDate = filterStartDate;
       ['TODAY', 'YESTERDAY', 'LAST7', 'THIS_MONTH', 'LAST_MONTH'].forEach(p => {
         document.getElementById(`preset-${p}`).className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
@@ -2448,6 +2554,7 @@
             edited_by: isAdmin ? null : (log ? log.edited_by : null),
             edited_by_role: isAdmin ? null : (log ? log.edited_by_role : null),
             edited_by_code: isAdmin ? null : (log ? log.edited_by_code : null),
+            edited_action: isAdmin ? null : (log ? log.edited_action : null),
             edited_at: isAdmin ? null : (log ? log.edited_at : null)
           });
         });
@@ -2492,6 +2599,7 @@
             edited_by: isAdmin ? null : (log.edited_by || null),
             edited_by_role: isAdmin ? null : (log.edited_by_role || null),
             edited_by_code: isAdmin ? null : (log.edited_by_code || null),
+            edited_action: isAdmin ? null : (log.edited_action || null),
             edited_at: isAdmin ? null : (log.edited_at || null)
           });
         });
@@ -2514,19 +2622,33 @@
       return { rows, filteredEmployees: filteredStaff, activeEmployees: activeUsers, selectedArea };
     }
 
+    // FIX #5: Always keep ✔ Self (Geo-Photo) when employee punched in/out, and show Edited by + Action + Time
     function formatEditAuditBadge(r) {
       if (!r || r.role === 'admin') return '';
+      const hasGeoOrPhoto = Boolean(
+        (r.marked_by && r.marked_by.startsWith('Self')) ||
+        r.lat != null ||
+        r.photo_resolved != null ||
+        r.photo_out_resolved != null ||
+        r.photo_base64 != null ||
+        r.photo_url != null
+      );
+      const selfBadgeHTML = hasGeoOrPhoto
+        ? `<div class="mt-1 inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[9.5px] font-bold leading-tight">✔ Self (Geo-Photo)</div>`
+        : '';
+
       const editorName = r.edited_by || (r.marked_by && r.marked_by !== '-' && !r.marked_by.startsWith('Self') ? r.marked_by : null);
-      if (!editorName) {
-        if (r.marked_by && r.marked_by.startsWith('Self')) {
-          return `<div class="mt-1 inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[9.5px] font-bold leading-tight">✔ Self (Geo-Photo)</div>`;
-        }
-        return '';
+      let editBadgeHTML = '';
+      if (editorName) {
+        const roleTag = r.edited_by_role ? ` (${r.edited_by_role.toUpperCase()})` : '';
+        const codeTag = r.edited_by_code ? ` [${r.edited_by_code}]` : '';
+        const resolvedAction = r.edited_action || (r.status && r.status !== '-' ? `Marked ${r.status}` : '');
+        const actionTag = resolvedAction ? ` — Action: ${resolvedAction}` : '';
+        const timeTag = r.edited_at ? ` at ${r.edited_at}` : '';
+        editBadgeHTML = `<div class="mt-1 bg-amber-50 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded text-[9.5px] font-extrabold leading-tight break-words">✏️ Edited by: ${editorName}${codeTag}${roleTag}${actionTag}${timeTag}</div>`;
       }
-      const roleTag = r.edited_by_role ? ` (${r.edited_by_role.toUpperCase()})` : '';
-      const codeTag = r.edited_by_code ? ` [${r.edited_by_code}]` : '';
-      const timeTag = r.edited_at ? ` at ${r.edited_at}` : '';
-      return `<div class="mt-1 bg-amber-50 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded text-[9.5px] font-extrabold leading-tight break-words">✏️ Edited by: ${editorName}${codeTag}${roleTag}${timeTag}</div>`;
+
+      return `${selfBadgeHTML}${editBadgeHTML}`;
     }
 
     function renderDashboard() {
@@ -2581,7 +2703,7 @@
         const isCoordinatorSelfRow = currentUser.role === 'coordinator' && (r.role === 'coordinator' || r.emp_code === currentUser.emp_code);
         const disableActionButtons = isAdminRow || isCoordinatorSelfRow;
 
-        const canPunchOutOverride = !disableActionButtons && r.status === 'Present' && r.att_time && r.att_time !== '-' && (!r.punch_out_time || r.punch_out_time === '-');
+        const canPunchOutOverride = !disableActionButtons && r.att_time && r.att_time !== '-' && (!r.punch_out_time || r.punch_out_time === '-');
         const punchOutActionBtn = canPunchOutOverride
           ? `<button onclick="manualMarkPunchOut('${r.emp_code}', '${r.att_date}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-1 rounded font-bold text-[10px]" title="Mark Punch Out">Punch Out</button>`
           : '';
@@ -2710,24 +2832,40 @@
       renderEmployeeMaintenanceTable();
     }
 
+    // FIX #7: Area Breakdown Cards count P / A / L across the full filterStartDate..filterEndDate range and display the active period
     function renderAreaBreakdownCards(activeEmployees, selectedArea) {
       const grid = document.getElementById('area-breakdown-grid');
       if (!grid) return;
       const validZones = zonesData.filter(z => !isPanIndiaZone(z.zone_name));
+      const isSingleDate = filterStartDate === filterEndDate;
+      const periodText = isSingleDate
+        ? formatDateDDMMYYYY(filterStartDate)
+        : `${formatDateDDMMYYYY(filterStartDate)} → ${formatDateDDMMYYYY(filterEndDate)}`;
 
       grid.innerHTML = validZones.map(z => {
-        const zoneEmps = activeEmployees.filter(u => u.zone_name === z.zone_name && (u.role === 'employee' || u.role === 'coordinator'));
-        const coords = usersData.filter(u => u.role === 'coordinator' && u.zone_name === z.zone_name && u.status === 'active');
+        const zoneEmps = activeEmployees.filter(u => normZone(u.zone_name) === normZone(z.zone_name) && (u.role === 'employee' || u.role === 'coordinator'));
+        const zoneEmpCodes = new Set(zoneEmps.map(u => u.emp_code));
+        const coords = usersData.filter(u => u.role === 'coordinator' && normZone(u.zone_name) === normZone(z.zone_name) && u.status === 'active');
         const coordNames = coords.length ? coords.map(c => c.full_name).join(', ') : 'No Coordinator';
 
         let p = 0, l = 0, a = 0;
-        zoneEmps.forEach(emp => {
-          const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === filterStartDate);
-          const st = log ? log.status : '-';
-          if (st === 'Present') p++;
-          else if (st === 'Leave') l++;
-          else if (st === 'Absent') a++;
-        });
+        if (isSingleDate) {
+          zoneEmps.forEach(emp => {
+            const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === filterStartDate);
+            const st = log ? log.status : (companyHolidays[filterStartDate] ? 'Holiday' : '-');
+            if (st === 'Present') p++;
+            else if (st === 'Leave' || st === 'Holiday') l++;
+            else if (st === 'Absent') a++;
+          });
+        } else {
+          attendanceData.forEach(x => {
+            if (x.att_date >= filterStartDate && x.att_date <= filterEndDate && (zoneEmpCodes.has(x.emp_code) || normZone(x.zone_name) === normZone(z.zone_name))) {
+              if (x.status === 'Present') p++;
+              else if (x.status === 'Leave' || x.status === 'Holiday') l++;
+              else if (x.status === 'Absent') a++;
+            }
+          });
+        }
 
         const cardStyle = selectedArea === z.zone_name
           ? 'bg-blue-50/80 border-2 border-blue-600 shadow-sm'
@@ -2743,7 +2881,10 @@
                 <button onclick="deleteProjectArea('${z.zone_name}')" title="Delete Project" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded">🗑️</button>
               </div>
             </div>
-            <p class="text-[11px] text-indigo-700 font-semibold mt-1 truncate">👤 Coord: ${coordNames}</p>
+            <div class="flex items-center justify-between gap-1 mt-1">
+              <p class="text-[11px] text-indigo-700 font-semibold truncate">👤 Coord: ${coordNames}</p>
+              <span class="text-[9.5px] font-mono font-bold text-slate-500 shrink-0">${periodText}</span>
+            </div>
             <div class="grid grid-cols-3 gap-1 text-center text-[11px] font-bold mt-2">
               <div class="bg-emerald-100 text-emerald-800 py-1 rounded">P: ${p}</div>
               <div class="bg-rose-100 text-rose-800 py-1 rounded">A: ${a}</div>
@@ -2768,7 +2909,7 @@
       document.getElementById('proj-form-title').textContent = `Edit Project Area: ${zoneName}`;
       document.getElementById('proj-old-name').value = zoneName;
       document.getElementById('proj-area-name').value = zoneName;
-      const coord = usersData.find(u => u.role === 'coordinator' && u.zone_name === zoneName);
+      const coord = usersData.find(u => u.role === 'coordinator' && normZone(u.zone_name) === normZone(zoneName));
       document.getElementById('proj-coord-code').value = coord ? coord.emp_code : '';
       document.getElementById('proj-coord-name').value = coord ? coord.full_name : '';
       document.getElementById('proj-coord-pin').value = coord ? coord.pin_code : '1234';
@@ -2843,6 +2984,7 @@
       );
     }
 
+    // FIX #5: Preserves Punch In/Out, GPS, Photos & Self badge when overriding a self-punched record; logs full Edit Audit
     async function manualOverrideStatus(empCode, targetDate, newStatus) {
       const emp = usersData.find(u => u.emp_code === empCode);
       if (!emp || emp.role === 'admin') return;
@@ -2910,6 +3052,7 @@
               edited_by: snap.edited_by || null,
               edited_by_role: snap.edited_by_role || null,
               edited_by_code: snap.edited_by_code || null,
+              edited_action: snap.edited_action || null,
               edited_at: snap.edited_at || null
             };
 
@@ -2921,22 +3064,7 @@
               renderEmployeeProfileHistory();
               renderProfileCalendar();
             }
-            if (isSupabaseConfigured) {
-              const dbPayload = buildSupabaseCompatibleRecord(restoredRecord);
-              const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
-              if (error) {
-                await supabaseClient
-                  .from('attendance_logs')
-                  .update({
-                    att_time: dbPayload.att_time,
-                    status: dbPayload.status,
-                    recorded_address: dbPayload.recorded_address,
-                    marked_by: dbPayload.marked_by
-                  })
-                  .eq('emp_code', restoredRecord.emp_code)
-                  .eq('att_date', restoredRecord.att_date);
-              }
-            }
+            await syncAttendanceRecordToSupabase(restoredRecord);
             showToastNotice(`↩ Undid status change for ${emp.full_name} — original Punch In/Out, photos & location restored.`);
             return;
           } else {
@@ -2947,9 +3075,10 @@
 
       // APPLY MANUAL OVERRIDE (1st click)
       const nowObj = new Date();
-      const nowTime = nowObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowTime = getCurrentISTTime12h(nowObj);
       const editorRoleLabel = currentUser.role === 'admin' ? 'Admin' : 'Coordinator';
       const editorSummary = `${currentUser.full_name} (${currentUser.emp_code} - ${editorRoleLabel})`;
+      const actionDesc = `Marked ${newStatus}`;
 
       let preEditSnapshot = null;
       let isManualFromBlank = false;
@@ -2976,15 +3105,19 @@
           photo_url: existingLog.photo_url || null,
           photo_base64: existingLog.photo_base64 || null,
           punch_out_photo: existingLog.punch_out_photo || null,
-          marked_by: existingLog.marked_by || 'Self (Geo-Photo)',
+          marked_by: 'Self (Geo-Photo)',
           edited_by: existingLog.edited_by || null,
           edited_by_role: existingLog.edited_by_role || null,
           edited_by_code: existingLog.edited_by_code || null,
+          edited_action: existingLog.edited_action || null,
           edited_at: existingLog.edited_at || null
         };
       } else {
-        isManualFromBlank = true;
+        isManualFromBlank = Boolean(!existingLog || existingLog._isManualFromBlank);
       }
+
+      const hasExistingInTime = Boolean(existingLog && existingLog.att_time && existingLog.att_time !== '-');
+      const hasExistingOutTime = Boolean(existingLog && existingLog.punch_out_time && existingLog.punch_out_time !== '-');
 
       const record = {
         ...(existingLog || {}),
@@ -2992,36 +3125,39 @@
         full_name: emp.full_name,
         zone_name: emp.zone_name,
         att_date: targetDate,
-        att_time: isSelfPunchRecord
-          ? (existingLog.att_time || nowTime)
-          : (newStatus === 'Present' ? (existingLog && existingLog.att_time && existingLog.att_time !== '-' ? existingLog.att_time : nowTime) : '-'),
-        punch_in_ts: isSelfPunchRecord
+        att_time: (isSelfPunchRecord || hasExistingInTime)
+          ? existingLog.att_time
+          : (newStatus === 'Present' ? nowTime : '-'),
+        punch_in_ts: (isSelfPunchRecord || hasExistingInTime)
           ? (existingLog.punch_in_ts || nowObj.getTime())
-          : (newStatus === 'Present' ? (existingLog?.punch_in_ts || nowObj.getTime()) : null),
-        punch_out_time: isSelfPunchRecord
-          ? (existingLog.punch_out_time || '-')
-          : (newStatus === 'Present' ? (existingLog?.punch_out_time || '-') : '-'),
-        punch_out_ts: isSelfPunchRecord ? (existingLog.punch_out_ts || null) : null,
-        work_duration: isSelfPunchRecord
+          : (newStatus === 'Present' ? nowObj.getTime() : null),
+        punch_out_time: (isSelfPunchRecord || hasExistingOutTime)
+          ? existingLog.punch_out_time
+          : '-',
+        punch_out_ts: (isSelfPunchRecord || hasExistingOutTime) ? (existingLog.punch_out_ts || null) : null,
+        work_duration: (isSelfPunchRecord || hasExistingOutTime)
           ? (existingLog.work_duration || '-')
-          : (newStatus === 'Present' ? (existingLog?.work_duration || '-') : '-'),
-        work_minutes: isSelfPunchRecord
+          : '-',
+        work_minutes: (isSelfPunchRecord || hasExistingOutTime)
           ? (existingLog.work_minutes || 0)
-          : (newStatus === 'Present' ? (existingLog?.work_minutes || 0) : 0),
+          : 0,
         status: newStatus,
         lat: existingLog ? existingLog.lat : null,
         lng: existingLog ? existingLog.lng : null,
         punch_out_lat: existingLog ? existingLog.punch_out_lat : null,
         punch_out_lng: existingLog ? existingLog.punch_out_lng : null,
-        recorded_address: (existingLog && existingLog.lat) ? existingLog.recorded_address : `Marked ${newStatus} by ${editorSummary}`,
+        recorded_address: (existingLog && existingLog.lat)
+          ? existingLog.recorded_address
+          : `Marked ${newStatus} by ${editorSummary}`,
         punch_out_address: existingLog ? (existingLog.punch_out_address || '-') : '-',
         photo_url: existingLog ? existingLog.photo_url : null,
         photo_base64: existingLog ? existingLog.photo_base64 : null,
         punch_out_photo: existingLog ? existingLog.punch_out_photo : null,
-        marked_by: editorSummary,
+        marked_by: isSelfPunchRecord ? 'Self (Geo-Photo)' : editorSummary,
         edited_by: currentUser.full_name,
         edited_by_role: currentUser.role,
         edited_by_code: currentUser.emp_code,
+        edited_action: actionDesc,
         edited_at: nowTime,
         _isManualFromBlank: isManualFromBlank,
         _isManualOverride: true,
@@ -3039,25 +3175,12 @@
         renderProfileCalendar();
       }
       if (isSelfPunchRecord) {
-        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} (Double-click / click ${newStatus} again within 30s to undo).`);
+        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} — Punch In/Out, Location & Photo preserved (Click ${newStatus} again within 30s to undo).`);
+      } else {
+        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} by ${currentUser.full_name} at ${nowTime}.`);
       }
 
-      if (isSupabaseConfigured) {
-        const dbPayload = buildSupabaseCompatibleRecord(record);
-        const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
-        if (error) {
-          await supabaseClient
-            .from('attendance_logs')
-            .update({
-              att_time: dbPayload.att_time,
-              status: dbPayload.status,
-              recorded_address: dbPayload.recorded_address,
-              marked_by: dbPayload.marked_by
-            })
-            .eq('emp_code', record.emp_code)
-            .eq('att_date', record.att_date);
-        }
-      }
+      await syncAttendanceRecordToSupabase(record);
     }
 
     function manualMarkPunchOut(empCode, targetDate) {
@@ -3068,7 +3191,7 @@
       }
 
       const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
-      if (!existingLog || existingLog.status !== 'Present' || !existingLog.att_time || existingLog.att_time === '-') {
+      if (!existingLog || !existingLog.att_time || existingLog.att_time === '-') {
         return showToastNotice("Please mark the staff member Present (Punch In) first before marking Punch Out.");
       }
 
@@ -3082,8 +3205,7 @@
       if (targetDate < getTodayISTDateStr()) {
         timeInput.value = '18:00';
       } else {
-        const now = new Date();
-        timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        timeInput.value = getCurrentISTTime24h(new Date());
       }
 
       document.getElementById('manual-punchout-modal').classList.remove('hidden');
@@ -3106,9 +3228,10 @@
       if (!emp || !existingLog) return closeManualPunchOutModal();
 
       const formattedOutTime = format24hTo12hAMPM(rawTime24);
-      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowTime = getCurrentISTTime12h(new Date());
       const editorRoleLabel = currentUser.role === 'admin' ? 'Admin' : 'Coordinator';
       const editorSummary = `${currentUser.full_name} (${currentUser.emp_code} - ${editorRoleLabel})`;
+      const isSelfPunchRecord = hasEmployeeSelfPunch(existingLog);
 
       const updatedTemp = {
         ...existingLog,
@@ -3118,10 +3241,11 @@
         punch_out_address: existingLog.punch_out_address && existingLog.punch_out_address !== '-'
           ? existingLog.punch_out_address
           : `Marked Punch Out (${formattedOutTime}) by ${editorSummary}`,
-        marked_by: editorSummary,
+        marked_by: isSelfPunchRecord ? 'Self (Geo-Photo)' : editorSummary,
         edited_by: currentUser.full_name,
         edited_by_role: currentUser.role,
         edited_by_code: currentUser.emp_code,
+        edited_action: `Marked Punch Out (${formattedOutTime})`,
         edited_at: nowTime
       };
       const durInfo = computeWorkDurationInfo(updatedTemp);
@@ -3142,53 +3266,11 @@
       }
       showToastNotice(`✔ Punch Out marked for ${emp.full_name} at ${formattedOutTime} (Duration: ${durInfo.text})`);
 
-      if (isSupabaseConfigured) {
-        const dbPayload = buildSupabaseCompatibleRecord(record);
-        const { error } = await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
-        if (error) {
-          await supabaseClient
-            .from('attendance_logs')
-            .update({
-              att_time: dbPayload.att_time,
-              status: dbPayload.status,
-              recorded_address: dbPayload.recorded_address,
-              marked_by: dbPayload.marked_by
-            })
-            .eq('emp_code', record.emp_code)
-            .eq('att_date', record.att_date);
-        }
-      }
+      await syncAttendanceRecordToSupabase(record);
     }
 
-    let profCalYear = new Date().getFullYear();
-    let profCalMonth = new Date().getMonth();
-    let adminHolidayScope = 'EMP';
-
-    function syncColorPickersAndLegendUI() {
-      ['Present', 'Absent', 'Leave', 'Holiday', 'Sunday'].forEach(key => {
-        const col = sectionColors[key] || DEFAULT_SECTION_COLORS[key];
-        const picker = document.getElementById(`color-pick-${key}`);
-        if (picker) picker.value = col;
-        const swatch = document.getElementById(`legend-swatch-${key}`);
-        if (swatch) swatch.style.backgroundColor = col;
-      });
-    }
-
-    function updateSectionColor(sectionKey, hexColor) {
-      if (!sectionKey || !hexColor) return;
-      sectionColors[sectionKey] = hexColor;
-      saveLocalFallback();
-      syncColorPickersAndLegendUI();
-      renderProfileCalendar();
-    }
-
-    function resetSectionColors() {
-      sectionColors = { ...DEFAULT_SECTION_COLORS };
-      saveLocalFallback();
-      syncColorPickersAndLegendUI();
-      renderProfileCalendar();
-      showToastNotice("🎨 Reset calendar section colors to default.");
-    }
+    let profCalYear = parseInt(getTodayISTDateStr().split('-')[0], 10);
+    let profCalMonth = parseInt(getTodayISTDateStr().split('-')[1], 10) - 1;
 
     function selectProfileCalendarDate(dateStr) {
       if (!dateStr) return;
@@ -3210,15 +3292,15 @@
       document.getElementById('prof-pan').textContent = emp.pan_card || 'Not Added';
       document.getElementById('prof-aadhaar').textContent = getUserAadhaar(emp);
 
-      const baseDateStr = filterStartDate || todayStr;
+      const baseDateStr = filterStartDate || getTodayISTDateStr();
       const parts = baseDateStr.split('-');
       if (parts.length === 3) {
         profCalYear = parseInt(parts[0], 10);
         profCalMonth = parseInt(parts[1], 10) - 1;
       } else {
-        const now = new Date();
-        profCalYear = now.getFullYear();
-        profCalMonth = now.getMonth();
+        const [iy, im] = getTodayISTDateStr().split('-').map(n => parseInt(n, 10));
+        profCalYear = iy;
+        profCalMonth = im - 1;
       }
 
       const firstDayStr = `${profCalYear}-${String(profCalMonth + 1).padStart(2, '0')}-01`;
@@ -3228,7 +3310,6 @@
       document.getElementById('prof-date-start').value = firstDayStr;
       document.getElementById('prof-date-end').value = lastDayStr;
 
-      syncColorPickersAndLegendUI();
       selectProfileCalendarDate(baseDateStr);
       renderEmployeeProfileHistory();
       renderProfileCalendar();
@@ -3263,7 +3344,7 @@
       }
 
       const holidayLabel = 'Holiday';
-      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nowTime = getCurrentISTTime12h(new Date());
 
       const rec = {
         emp_code: emp.emp_code,
@@ -3281,14 +3362,12 @@
         edited_by: currentUser.full_name,
         edited_by_role: currentUser.role,
         edited_by_code: currentUser.emp_code,
+        edited_action: 'Marked Holiday',
         edited_at: nowTime
       };
       attendanceData = attendanceData.filter(a => !(a.emp_code === emp.emp_code && a.att_date === targetDate));
       attendanceData.unshift(rec);
-      if (isSupabaseConfigured) {
-        const dbPayload = buildSupabaseCompatibleRecord(rec);
-        await supabaseClient.from('attendance_logs').upsert(dbPayload, { onConflict: 'emp_code,att_date' });
-      }
+      await syncAttendanceRecordToSupabase(rec);
       saveLocalFallback();
       selectProfileCalendarDate(targetDate);
       renderEmployeeProfileHistory();
@@ -3317,7 +3396,6 @@
 
     function renderProfileCalendar() {
       if (!activeProfileEmpCode) return;
-      syncColorPickersAndLegendUI();
       const monthNames = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
@@ -3334,6 +3412,7 @@
       const firstDow = new Date(profCalYear, profCalMonth, 1).getDay();
       const daysInMonth = new Date(profCalYear, profCalMonth + 1, 0).getDate();
       const monthPrefix = `${profCalYear}-${String(profCalMonth + 1).padStart(2, '0')}-`;
+      const todayIST = getTodayISTDateStr();
 
       const logMap = {};
       attendanceData.forEach(a => {
@@ -3354,7 +3433,7 @@
         const isSunday = dow === 0;
         const log = logMap[dateStr];
         const compHoliday = companyHolidays[dateStr];
-        const isToday = dateStr === todayStr;
+        const isToday = dateStr === todayIST;
         const isSelected = dateStr === selectedSideCalDate;
 
         if (compHoliday) {
@@ -3475,7 +3554,7 @@
         if (log.status === 'Present') p++;
         else if (log.status === 'Leave') l++;
         else if (log.status === 'Holiday') h++;
-        else a++;
+        else if (log.status === 'Absent') a++;
 
         const durInfo = computeWorkDurationInfo(log);
         totalPeriodMinutes += (durInfo.minutes || 0);
@@ -3585,9 +3664,14 @@
         const excelSafeAadhaar = /^\d+$/.test(rawAadhaar.replace(/\s+/g, '')) ? `\t${rawAadhaar}` : rawAadhaar;
 
         grandTotalMinutes += (Number(r.work_minutes) || 0);
-        const editorCol = r.edited_by
-          ? `${r.edited_by} (${r.edited_by_code || ''} ${r.edited_by_role || ''}) ${r.edited_at ? '@ ' + r.edited_at : ''}`.trim()
-          : (r.marked_by || '-');
+        const resolvedAction = r.edited_action || (r.edited_by && r.status && r.status !== '-' ? `Marked ${r.status}` : '');
+        const editNote = r.edited_by
+          ? `Edited by ${r.edited_by} (${r.edited_by_code || ''} ${r.edited_by_role || ''})${resolvedAction ? ' - Action: ' + resolvedAction : ''} ${r.edited_at ? '@ ' + r.edited_at : ''}`.trim()
+          : '';
+        const hasSelf = Boolean((r.marked_by && r.marked_by.startsWith('Self')) || r.lat != null || r.photo_resolved != null);
+        const editorCol = (hasSelf && editNote)
+          ? `Self (Geo-Photo) | ${editNote}`
+          : (editNote || r.marked_by || '-');
 
         const missingOut = isPunchOutMissing(r);
         const csvPunchOut = missingOut ? 'Punch Out Missing' : (r.punch_out_time || '-');
@@ -4014,6 +4098,7 @@
       showToastNotice(`Deleted ${displayName}.`);
     }
 
+    // FIX #8: Validate area name & Coordinator ID BEFORE mutating zonesData, usersData, attendanceData, or Supabase
     async function handleCreateProjectAndCoordinator(e) {
       e.preventDefault();
       if (!currentUser || currentUser.role !== 'admin') return;
@@ -4023,8 +4108,21 @@
       const coordName = document.getElementById('proj-coord-name').value.trim();
       const coordPin = document.getElementById('proj-coord-pin').value.trim() || '1234';
 
+      if (!areaName) {
+        return showToastNotice("Please enter a Project / Area Name.");
+      }
       if (isPanIndiaZone(areaName)) {
         return showToastNotice("Pan-India cannot be created as a project area.");
+      }
+
+      const lookupArea = oldName || areaName;
+      const existingCoordForArea = usersData.find(u => u.role === 'coordinator' && normZone(u.zone_name) === normZone(lookupArea));
+
+      if (coordCode && coordName) {
+        const coordIdCheck = validateUniqueUserCode(coordCode, 'coordinator', areaName, existingCoordForArea ? existingCoordForArea.emp_code : coordCode);
+        if (!coordIdCheck.valid) {
+          return showToastNotice(coordIdCheck.message);
+        }
       }
 
       const saveBtn = document.getElementById('btn-save-proj');
@@ -4052,19 +4150,19 @@
       }
 
       if (coordCode && coordName) {
-        const existingCoordForArea = usersData.find(u => u.role === 'coordinator' && normZone(u.zone_name) === normZone(areaName));
-        const coordIdCheck = validateUniqueUserCode(coordCode, 'coordinator', areaName, existingCoordForArea ? existingCoordForArea.emp_code : coordCode);
-        if (!coordIdCheck.valid) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = "+ Save Project";
-          return showToastNotice(coordIdCheck.message);
+        if (existingCoordForArea && existingCoordForArea.emp_code !== coordCode) {
+          usersData = usersData.filter(u => u.emp_code !== existingCoordForArea.emp_code);
+          if (isSupabaseConfigured) {
+            await supabaseClient.from('app_users').delete().eq('emp_code', existingCoordForArea.emp_code);
+          }
         }
         const coordObj = {
+          ...(existingCoordForArea || {}),
           emp_code: coordCode,
           pin_code: coordPin,
           full_name: coordName,
           role: 'coordinator',
-          designation: 'Supervisor',
+          designation: existingCoordForArea?.designation || 'Supervisor',
           zone_name: areaName,
           status: 'active'
         };
@@ -4073,8 +4171,9 @@
         if (isSupabaseConfigured) {
           const { error: uErr } = await supabaseClient.from('app_users').upsert(coordObj, { onConflict: 'emp_code' });
           if (uErr) {
-            delete coordObj.designation;
-            await supabaseClient.from('app_users').upsert(coordObj, { onConflict: 'emp_code' });
+            const fallbackCoord = { ...coordObj };
+            delete fallbackCoord.designation;
+            await supabaseClient.from('app_users').upsert(fallbackCoord, { onConflict: 'emp_code' });
           }
         }
       }
@@ -4103,7 +4202,7 @@
         : 'flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs font-extrabold rounded-xl text-slate-600 hover:text-slate-900 text-center';
     }
 
-    function viewPhoto(empCode, targetDate = todayStr, isPunchOut = false) {
+    function viewPhoto(empCode, targetDate = getTodayISTDateStr(), isPunchOut = false) {
       if (currentUser?.role === 'coordinator') {
         const emp = usersData.find(u => u.emp_code === empCode);
         if (!canCoordinatorAccessEmployee(emp)) return;
