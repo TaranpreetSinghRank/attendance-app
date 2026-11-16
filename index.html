@@ -156,14 +156,14 @@
 
         <form onsubmit="handleLogin(event)" class="space-y-6 sm:space-y-7">
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-2.5">Unique User ID / Code</label>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-2.5">Unique User ID</label>
             <input type="text" id="login-emp-code" required placeholder="e.g. AD01, COBLY001, BLYEMP0001"
               class="w-full px-4 py-3.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-bold uppercase font-mono" />
             <p class="text-[10.5px] text-slate-500 mt-2.5 font-semibold leading-relaxed break-words">Admin: <span class="font-mono text-indigo-700">AD</span> • Coord: <span class="font-mono text-emerald-700">COBLY/COMBD/COSMA/COPTH</span> • Emp: <span class="font-mono text-blue-700">BLY/MBD/SMA/PTHEMP</span></p>
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-2.5">PIN / Password</label>
-            <input type="password" id="login-pin" required value="1234"
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-2.5">Password</label>
+            <input type="password" id="login-pin" required placeholder="Enter your password" autocomplete="off"
               class="w-full px-4 py-3.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:outline-none text-sm font-bold" />
             <p class="text-[11px] text-slate-400 mt-2.5 font-medium">🔒 Password / PIN is provided exclusively by Admin.</p>
           </div>
@@ -4700,12 +4700,183 @@
       document.getElementById('employee-profile-modal').classList.add('hidden');
     }
 
+    function xmlEscape(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
+
+    function excelColName(colIdx1Based) {
+      let n = colIdx1Based;
+      let name = '';
+      while (n > 0) {
+        const rem = (n - 1) % 26;
+        name = String.fromCharCode(65 + rem) + name;
+        n = Math.floor((n - 1) / 26);
+      }
+      return name;
+    }
+
+    function buildWorksheetXmlAndRels(aoa, colWidths, rowStylesMap, cellStyleFn) {
+      const hyperlinks = [];
+      let colsXml = '<cols>';
+      colWidths.forEach((w, idx) => {
+        colsXml += `<col min="${idx + 1}" max="${idx + 1}" width="${w}" customWidth="1"/>`;
+      });
+      colsXml += '</cols>';
+
+      let sheetDataXml = '<sheetData>';
+      aoa.forEach((row, rIdx) => {
+        const rowNum = rIdx + 1;
+        const rowHeightAttr = rIdx === 0 ? ' ht="24" customHeight="1"' : ' ht="19" customHeight="1"';
+        sheetDataXml += `<row r="${rowNum}"${rowHeightAttr}>`;
+        row.forEach((cellVal, cIdx) => {
+          const ref = `${excelColName(cIdx + 1)}${rowNum}`;
+          const isObj = cellVal && typeof cellVal === 'object';
+          const rawVal = isObj ? (cellVal.text ?? '') : (cellVal ?? '');
+          const linkUrl = isObj ? cellVal.hyperlink : null;
+          const isNum = typeof rawVal === 'number' && !isNaN(rawVal);
+
+          let styleId = rowStylesMap[rIdx] ?? 0;
+          if (cellStyleFn) {
+            const customS = cellStyleFn(rIdx, cIdx, rawVal, isObj ? cellVal : null);
+            if (customS != null) styleId = customS;
+          }
+          if (linkUrl) {
+            const rId = `rId${hyperlinks.length + 1}`;
+            hyperlinks.push({ ref, rId, url: linkUrl });
+          }
+
+          if (isNum) {
+            sheetDataXml += `<c r="${ref}" s="${styleId}"><v>${rawVal}</v></c>`;
+          } else {
+            sheetDataXml += `<c r="${ref}" s="${styleId}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(rawVal)}</t></is></c>`;
+          }
+        });
+        sheetDataXml += '</row>';
+      });
+      sheetDataXml += '</sheetData>';
+
+      let hyperlinksXml = '';
+      let relsXml = null;
+      if (hyperlinks.length > 0) {
+        hyperlinksXml = '<hyperlinks>' + hyperlinks.map(h => `<hyperlink ref="${h.ref}" r:id="${h.rId}"/>`).join('') + '</hyperlinks>';
+        relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+          `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+          hyperlinks.map(h => `<Relationship Id="${h.rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${xmlEscape(h.url)}" TargetMode="External"/>`).join('') +
+          `</Relationships>`;
+      }
+
+      const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+        `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` +
+        colsXml +
+        sheetDataXml +
+        hyperlinksXml +
+        `<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0" paperSize="9"/>` +
+        `</worksheet>`;
+
+      return { sheetXml, relsXml };
+    }
+
+    function createStoredZipBlob(files) {
+      const encoder = new TextEncoder();
+      const crcTable = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) {
+        let c = n;
+        for (let k = 0; k < 8; k++) {
+          c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        crcTable[n] = c >>> 0;
+      }
+      function crc32(bytes) {
+        let c = 0xFFFFFFFF;
+        for (let i = 0; i < bytes.length; i++) {
+          c = crcTable[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+        }
+        return (c ^ 0xFFFFFFFF) >>> 0;
+      }
+
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
+
+      files.forEach(file => {
+        const nameBytes = encoder.encode(file.name);
+        const dataBytes = encoder.encode(file.content);
+        const crc = crc32(dataBytes);
+        const size = dataBytes.length;
+
+        const localHeader = new Uint8Array(30 + nameBytes.length);
+        const lv = new DataView(localHeader.buffer);
+        lv.setUint32(0, 0x04034b50, true);
+        lv.setUint16(4, 20, true);
+        lv.setUint16(6, 0, true);
+        lv.setUint16(8, 0, true);
+        lv.setUint16(10, 0, true);
+        lv.setUint16(12, 0x2100, true);
+        lv.setUint32(14, crc, true);
+        lv.setUint32(18, size, true);
+        lv.setUint32(22, size, true);
+        lv.setUint16(26, nameBytes.length, true);
+        lv.setUint16(28, 0, true);
+        localHeader.set(nameBytes, 30);
+
+        const centralHeader = new Uint8Array(46 + nameBytes.length);
+        const cv = new DataView(centralHeader.buffer);
+        cv.setUint32(0, 0x02014b50, true);
+        cv.setUint16(4, 20, true);
+        cv.setUint16(6, 20, true);
+        cv.setUint16(8, 0, true);
+        cv.setUint16(10, 0, true);
+        cv.setUint16(12, 0, true);
+        cv.setUint16(14, 0x2100, true);
+        cv.setUint32(16, crc, true);
+        cv.setUint32(20, size, true);
+        cv.setUint32(24, size, true);
+        cv.setUint16(28, nameBytes.length, true);
+        cv.setUint16(30, 0, true);
+        cv.setUint16(32, 0, true);
+        cv.setUint16(34, 0, true);
+        cv.setUint16(36, 0, true);
+        cv.setUint32(38, 0, true);
+        cv.setUint32(42, offset, true);
+        centralHeader.set(nameBytes, 46);
+
+        localParts.push(localHeader, dataBytes);
+        centralParts.push(centralHeader);
+        offset += localHeader.length + size;
+      });
+
+      const centralSize = centralParts.reduce((acc, arr) => acc + arr.length, 0);
+      const eocd = new Uint8Array(22);
+      const ev = new DataView(eocd.buffer);
+      ev.setUint32(0, 0x06054b50, true);
+      ev.setUint16(4, 0, true);
+      ev.setUint16(6, 0, true);
+      ev.setUint16(8, files.length, true);
+      ev.setUint16(10, files.length, true);
+      ev.setUint32(12, centralSize, true);
+      ev.setUint32(16, offset, true);
+      ev.setUint16(20, 0, true);
+
+      return new Blob([...localParts, ...centralParts, eocd], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+    }
+
     function exportFilteredToExcelCSV() {
-      const { rows: rawRows, selectedArea } = getFilteredAttendanceRows();
+      const { rows: rawRows, filteredEmployees, selectedArea } = getFilteredAttendanceRows();
       const rows = filterMissingPunchOutOnly ? rawRows.filter(r => r.role !== 'admin' && isPunchOutMissing(r)) : rawRows;
       if (!rows.length) return showToastNotice("No records found to export. Please select an Area or Role filter first.");
 
-      const headers = [
+      // =========================================================================
+      // SHEET 1: DAILY ATTENDANCE LOG (Previous Excel structure + Location Links)
+      // =========================================================================
+      const sheet1Headers = [
         "Date",
         "Employee ID",
         "Full Name",
@@ -4719,20 +4890,40 @@
         "Punch Out Time",
         "Total Duration (Hrs & Mins)",
         "Punch In Location",
+        "Punch In Location Link",
         "Punch Out Location",
+        "Punch Out Location Link",
         "Marked / Edited By",
         "Punch In Photo Link",
         "Punch Out Photo Link"
       ];
-      const csvLines = [headers.join(",")];
+
+      const sheet1AOA = [sheet1Headers];
       let grandTotalMinutes = 0;
 
       rows.forEach(r => {
         const directPhotoInLink = r.photo_resolved && r.photo_resolved.startsWith('http') ? r.photo_resolved : "";
         const directPhotoOutLink = r.photo_out_resolved && r.photo_out_resolved.startsWith('http') ? r.photo_out_resolved : "";
-        const rawAadhaar = (r.aadhaar_card || '').toString().replace(/"/g, '""');
-        const excelSafeAadhaar = /^\d+$/.test(rawAadhaar.replace(/\s+/g, '')) ? `\t${rawAadhaar}` : rawAadhaar;
-        const rawPan = (r.pan_card || 'Not Added').toString().replace(/"/g, '""');
+        const rawAadhaar = (r.aadhaar_card || 'Not Added').toString();
+        const rawPan = (r.pan_card || 'Not Added').toString();
+
+        const hasInCoords = r.lat != null && r.lng != null;
+        const inMapLink = hasInCoords ? `https://www.google.com/maps?q=${r.lat},${r.lng}` : "";
+
+        const hasOutRecord = Boolean(
+          (r.punch_out_address && r.punch_out_address !== '-') ||
+          (r.punch_out_time && r.punch_out_time !== '-') ||
+          r.photo_out_resolved ||
+          r.punch_out_lat != null
+        );
+        const outLat = Number(r.punch_out_lat ?? r.lat);
+        const outLng = Number(r.punch_out_lng ?? r.lng);
+        const outMapLink = (hasOutRecord && !isNaN(outLat) && !isNaN(outLng) && (r.punch_out_lat != null || hasInCoords))
+          ? `https://www.google.com/maps?q=${outLat},${outLng}`
+          : "";
+        const outLocText = hasOutRecord
+          ? ((r.punch_out_address && r.punch_out_address !== '-') ? r.punch_out_address : (r.recorded_address || '-'))
+          : '-';
 
         grandTotalMinutes += (Number(r.work_minutes) || 0);
         const resolvedAction = r.edited_action || (r.edited_by && r.status && r.status !== '-' ? `Marked ${r.status}` : '');
@@ -4748,57 +4939,249 @@
         const csvPunchOut = missingOut ? 'Punch Out Missing' : (r.punch_out_time || '-');
         const csvDuration = missingOut ? 'Missing (0.00 hrs)' : (r.work_duration || '-');
 
-        csvLines.push([
+        sheet1AOA.push([
           formatDateDDMMYYYY(r.att_date),
-          r.emp_code,
-          `"${(r.full_name || '').replace(/"/g, '""')}"`,
-          `"${(r.role || '').toUpperCase()}"`,
-          `"${(r.designation || '').replace(/"/g, '""')}"`,
-          `"${(r.zone_name || '').replace(/"/g, '""')}"`,
-          `"${excelSafeAadhaar}"`,
-          `"${rawPan}"`,
-          r.status,
-          `"${r.att_time || '-'}"`,
-          `"${csvPunchOut}"`,
-          `"${csvDuration}"`,
-          `"${(r.recorded_address || '').replace(/"/g, '""')}"`,
-          `"${(r.punch_out_address || '-').replace(/"/g, '""')}"`,
-          `"${editorCol.replace(/"/g, '""')}"`,
-          `"${directPhotoInLink}"`,
-          `"${directPhotoOutLink}"`
-        ].join(","));
+          r.emp_code || '-',
+          r.full_name || '-',
+          (r.role || '').toUpperCase(),
+          r.designation || '-',
+          r.zone_name || '-',
+          rawAadhaar,
+          rawPan,
+          r.status || '-',
+          r.att_time || '-',
+          csvPunchOut,
+          csvDuration,
+          r.recorded_address || '-',
+          inMapLink ? { text: inMapLink, hyperlink: inMapLink } : '-',
+          outLocText,
+          outMapLink ? { text: outMapLink, hyperlink: outMapLink } : '-',
+          editorCol,
+          directPhotoInLink ? { text: directPhotoInLink, hyperlink: directPhotoInLink } : '-',
+          directPhotoOutLink ? { text: directPhotoOutLink, hyperlink: directPhotoOutLink } : '-'
+        ]);
       });
 
       const totalHrs = Math.floor(grandTotalMinutes / 60);
       const totalMins = grandTotalMinutes % 60;
-      csvLines.push([
+      sheet1AOA.push([
         "TOTAL WORKED DURATION",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        `"${totalHrs}h ${totalMins}m"`,
-        "",
-        "",
-        "",
-        "",
-        ""
-      ].join(","));
+        "", "", "", "", "", "", "", "", "", "",
+        `${totalHrs}h ${totalMins}m`,
+        "", "", "", "", "", "", ""
+      ]);
 
-      const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const sheet1Widths = [13, 15, 22, 13, 20, 15, 18, 14, 12, 14, 16, 22, 30, 36, 30, 36, 38, 36, 36];
+      const sheet1RowStyles = { 0: 1, [sheet1AOA.length - 1]: 2 };
+      const sheet1CellStyleFn = (rIdx, cIdx, val, obj) => {
+        if (rIdx === 0) return 1;
+        if (rIdx === sheet1AOA.length - 1) return 2;
+        if (obj && obj.hyperlink) return 7;
+        if (cIdx === 8) {
+          if (val === 'Present') return 3;
+          if (val === 'Absent') return 4;
+          if (val === 'Leave') return 5;
+          if (val === 'Holiday') return 6;
+        }
+        return 0;
+      };
+
+      // =========================================================================
+      // SHEET 2: MONTHLY 1-30/31 ATTENDANCE SUMMARY (No Payment / Amount Column)
+      // =========================================================================
+      const baseMonthStr = (filterStartDate || getTodayISTDateStr()).slice(0, 7);
+      const [mYear, mMonth] = baseMonthStr.split('-').map(n => parseInt(n, 10));
+      ensureAutomatedGazetteHolidaysForYear(mYear);
+      const daysInMonth = new Date(mYear, mMonth, 0).getDate();
+      const monthDates = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        monthDates.push(`${mYear}-${String(mMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+      }
+
+      const sheet2Headers = [
+        "Employee ID",
+        "Full Name",
+        "Role",
+        "Designation",
+        "Project Area",
+        ...monthDates.map(dStr => dStr.slice(8, 10)),
+        "Total Present (P)",
+        "Total Absent (A)",
+        "Total Leave (L)",
+        "Total Holiday (H)",
+        "Total Worked Duration"
+      ];
+
+      const sheet2AOA = [sheet2Headers];
+      const staffForMatrix = (filteredEmployees || []).filter(u => u.role !== 'admin');
+
+      staffForMatrix.forEach(emp => {
+        let pCnt = 0, aCnt = 0, lCnt = 0, hCnt = 0, empMins = 0;
+        const dayCells = monthDates.map(dStr => {
+          const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === dStr);
+          const holName = companyHolidays[dStr];
+          const st = log ? log.status : (holName ? 'Holiday' : '-');
+          if (log) {
+            const dInfo = computeWorkDurationInfo(log);
+            empMins += (dInfo.minutes || 0);
+          }
+          if (st === 'Present') { pCnt++; return 'P'; }
+          if (st === 'Absent') { aCnt++; return 'A'; }
+          if (st === 'Leave') { lCnt++; return 'L'; }
+          if (st === 'Holiday') { hCnt++; return 'H'; }
+          return '-';
+        });
+
+        const eHrs = Math.floor(empMins / 60);
+        const eRemMins = empMins % 60;
+        const defaultDesig = emp.role === 'coordinator' ? 'Coordinator' : 'Employee';
+
+        sheet2AOA.push([
+          emp.emp_code || '-',
+          emp.full_name || '-',
+          (emp.role || '').toUpperCase(),
+          emp.designation || defaultDesig,
+          emp.zone_name || '-',
+          ...dayCells,
+          pCnt,
+          aCnt,
+          lCnt,
+          hCnt,
+          `${eHrs}h ${eRemMins}m`
+        ]);
+      });
+
+      const sheet2Widths = [
+        15, 22, 13, 20, 15,
+        ...monthDates.map(() => 5.5),
+        16, 16, 15, 16, 20
+      ];
+      const firstDayColIdx = 5;
+      const lastDayColIdx = 5 + monthDates.length - 1;
+      const sheet2CellStyleFn = (rIdx, cIdx, val) => {
+        if (rIdx === 0) return 1;
+        if (cIdx >= firstDayColIdx && cIdx <= lastDayColIdx) {
+          if (val === 'P') return 3;
+          if (val === 'A') return 4;
+          if (val === 'L') return 5;
+          if (val === 'H') return 6;
+          return 8;
+        }
+        if (cIdx > lastDayColIdx) return 2;
+        return 0;
+      };
+
+      const s1 = buildWorksheetXmlAndRels(sheet1AOA, sheet1Widths, sheet1RowStyles, sheet1CellStyleFn);
+      const s2 = buildWorksheetXmlAndRels(sheet2AOA, sheet2Widths, { 0: 1 }, sheet2CellStyleFn);
+
+      const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="8">
+    <font><sz val="10"/><color rgb="FF1E293B"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF065F46"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF9F1239"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF92400E"/><name val="Calibri"/></font>
+    <font><b/><sz val="10"/><color rgb="FF5B21B6"/><name val="Calibri"/></font>
+    <font><u/><sz val="10"/><color rgb="FF2563EB"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="8">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A8A"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFD1FAE5"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFE4E6"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEDE9FE"/><bgColor indexed="64"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFCBD5E1"/></left>
+      <right style="thin"><color rgb="FFCBD5E1"/></right>
+      <top style="thin"><color rgb="FFCBD5E1"/></top>
+      <bottom style="thin"><color rgb="FFCBD5E1"/></bottom>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="9">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="7" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+  </cellXfs>
+</styleSheet>`;
+
+      const zipFiles = [
+        {
+          name: '[Content_Types].xml',
+          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`
+        },
+        {
+          name: '_rels/.rels',
+          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`
+        },
+        {
+          name: 'xl/workbook.xml',
+          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Daily Attendance Log" sheetId="1" r:id="rId1"/>
+    <sheet name="Monthly 1-${daysInMonth} Summary" sheetId="2" r:id="rId2"/>
+  </sheets>
+</workbook>`
+        },
+        {
+          name: 'xl/_rels/workbook.xml.rels',
+          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`
+        },
+        { name: 'xl/styles.xml', content: stylesXml },
+        { name: 'xl/worksheets/sheet1.xml', content: s1.sheetXml },
+        { name: 'xl/worksheets/sheet2.xml', content: s2.sheetXml }
+      ];
+
+      if (s1.relsXml) {
+        zipFiles.push({ name: 'xl/worksheets/_rels/sheet1.xml.rels', content: s1.relsXml });
+      }
+      if (s2.relsXml) {
+        zipFiles.push({ name: 'xl/worksheets/_rels/sheet2.xml.rels', content: s2.relsXml });
+      }
+
+      const blob = createStoredZipBlob(zipFiles);
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Attendance_${selectedArea || 'Filtered'}_${formatDateDDMMYYYY(filterStartDate)}_to_${formatDateDDMMYYYY(filterEndDate)}.csv`;
+      link.download = `Attendance_${selectedArea || 'Filtered'}_${formatDateDDMMYYYY(filterStartDate)}_to_${formatDateDDMMYYYY(filterEndDate)}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      showToastNotice(`📊 Exported 2-Sheet Excel (.XLSX): Daily Log + Monthly 1-${daysInMonth} Summary!`);
     }
 
     function renderEmployeeMaintenanceTable() {
