@@ -858,14 +858,16 @@
                 <div class="flex items-center gap-1.5">
                   <button
                     type="button"
+                    id="btn-prof-apply-leave"
                     onclick="applyMultiDayLeaveForStaff()"
                     class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-1.5 px-3 rounded-lg text-[11px] shadow-sm transition flex items-center justify-center gap-1"
                   >
-                    <span>✔</span>
-                    <span>Apply Leave (From–To)</span>
+                    <span id="btn-prof-apply-leave-icon">✔</span>
+                    <span id="btn-prof-apply-leave-text">Apply Leave (From–To)</span>
                   </button>
                   <button
                     type="button"
+                    id="btn-prof-clear-leave"
                     onclick="clearMultiDayLeaveForStaff()"
                     class="shrink-0 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-extrabold py-1.5 px-2.5 rounded-lg text-[11px] transition"
                   >
@@ -3134,8 +3136,9 @@
 
         const isCoordinatorSelfRow = currentUser.role === 'coordinator' && (r.role === 'coordinator' || r.emp_code === currentUser.emp_code);
         const disableActionButtons = isAdminRow || isCoordinatorSelfRow;
+        const isPastDateLockedForCoord = !disableActionButtons && isDateLockedForCoordinator(r.att_date);
 
-        const canPunchOutOverride = !disableActionButtons && r.att_time && r.att_time !== '-' && (!r.punch_out_time || r.punch_out_time === '-');
+        const canPunchOutOverride = !disableActionButtons && !isPastDateLockedForCoord && r.att_time && r.att_time !== '-' && (!r.punch_out_time || r.punch_out_time === '-');
         const punchOutActionBtn = canPunchOutOverride
           ? `<button onclick="manualMarkPunchOut('${r.emp_code}', '${r.att_date}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-1 rounded font-bold text-[10px]" title="Mark Punch Out">Punch Out</button>`
           : '';
@@ -3146,11 +3149,13 @@
 
         const actionCellHTML = disableActionButtons
           ? `<span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">-</span>`
+          : isPastDateLockedForCoord
+          ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-300 font-extrabold px-2 py-1 rounded-md text-[10px] select-none" title="Past date attendance is locked after 12:00 AM IST. Contact Admin for changes.">🔒 Locked (Admin Only)</span>`
           : `<div class="flex flex-wrap items-center justify-end gap-1">
-               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" title="Click to mark Present; click twice / double-click to undo" class="${pActiveRing} text-emerald-700 border border-emerald-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Present</button>
+               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" title="Click to mark Present; click again to undo" class="${pActiveRing} text-emerald-700 border border-emerald-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Present</button>
                ${punchOutActionBtn}
-               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Leave')" title="Click to mark Leave; click twice / double-click to undo" class="${lActiveRing} text-amber-700 border border-amber-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Leave</button>
-               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" title="Click to mark Absent; click twice / double-click to undo" class="${aActiveRing} text-rose-700 border border-rose-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Absent</button>
+               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Leave')" title="Click to mark Leave; click again to undo" class="${lActiveRing} text-amber-700 border border-amber-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Leave</button>
+               <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Absent')" title="Click to mark Absent; click again to undo" class="${aActiveRing} text-rose-700 border border-rose-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Absent</button>
              </div>`;
 
         const roleBadge = r.role === 'coordinator'
@@ -3553,12 +3558,22 @@
       );
     }
 
+    // Coordinator Past-Date Lock Helper: returns true when logged in as Coordinator and targetDate is before Today (12:00 AM IST cutoff)
+    function isDateLockedForCoordinator(dateStr) {
+      if (!currentUser || currentUser.role !== 'coordinator') return false;
+      if (!dateStr) return false;
+      return dateStr < getTodayISTDateStr();
+    }
+
     // FIX #5: Preserves Punch In/Out, GPS, Photos & Self badge when overriding a self-punched record; logs full Edit Audit
     async function manualOverrideStatus(empCode, targetDate, newStatus) {
       const emp = usersData.find(u => u.emp_code === empCode);
       if (!emp || emp.role === 'admin') return;
       if (currentUser.role === 'coordinator' && (!canCoordinatorAccessEmployee(emp) || emp.role === 'coordinator' || emp.emp_code === currentUser.emp_code)) {
         return showToastNotice("Coordinators can only mark their own attendance via the Punch In / Out camera screen.");
+      }
+      if (isDateLockedForCoordinator(targetDate)) {
+        return showToastNotice("🔒 Past attendance is locked after 12:00 AM IST. Please contact Admin for any changes.");
       }
 
       const key = `${empCode}_${targetDate}`;
@@ -3573,7 +3588,7 @@
       const isSelfPunchRecord = hasEmployeeSelfPunch(existingLog);
 
       // CHECK IF THIS IS A REPEAT CLICK / DOUBLE-CLICK ON THE SAME STATUS OPTION TO UNDO/REMOVE
-      if (existingLog && existingLog.status === newStatus && (existingLog._isManualFromBlank || existingLog._isManualOverride || !isSelfPunchRecord)) {
+      if (existingLog && existingLog.status === newStatus && (existingLog._isManualFromBlank || existingLog._isManualOverride || existingLog.edited_by || !isSelfPunchRecord)) {
         // CASE 1: Originally Blank/Unmarked (Employee did NOT punch in) -> Remove completely with no mentioning
         if (existingLog._isManualFromBlank || !isSelfPunchRecord) {
           manualUndoCooldownMap[key] = nowMs;
@@ -3590,55 +3605,50 @@
           return;
         }
 
-        // CASE 2: Employee DID Punch In -> Undo within 30 seconds restores exact original punch-in, punch-out, photos, location & Self badge
-        if (isSelfPunchRecord && existingLog._preEditSnapshot) {
-          const elapsedMs = nowMs - (existingLog._manualOverrideTs || 0);
-          if (elapsedMs <= 30000) {
-            manualUndoCooldownMap[key] = nowMs;
-            const snap = existingLog._preEditSnapshot;
-            const restoredRecord = {
-              emp_code: emp.emp_code,
-              full_name: emp.full_name,
-              zone_name: emp.zone_name,
-              att_date: targetDate,
-              att_time: snap.att_time || '-',
-              punch_in_ts: snap.punch_in_ts || null,
-              punch_out_time: snap.punch_out_time || '-',
-              punch_out_ts: snap.punch_out_ts || null,
-              work_duration: snap.work_duration || '-',
-              work_minutes: snap.work_minutes || 0,
-              status: snap.status || 'Present',
-              lat: snap.lat ?? existingLog.lat ?? null,
-              lng: snap.lng ?? existingLog.lng ?? null,
-              punch_out_lat: snap.punch_out_lat ?? existingLog.punch_out_lat ?? null,
-              punch_out_lng: snap.punch_out_lng ?? existingLog.punch_out_lng ?? null,
-              recorded_address: snap.recorded_address || existingLog.recorded_address || 'Location Captured',
-              punch_out_address: snap.punch_out_address || existingLog.punch_out_address || '-',
-              photo_url: snap.photo_url ?? existingLog.photo_url ?? null,
-              photo_base64: snap.photo_base64 ?? existingLog.photo_base64 ?? null,
-              punch_out_photo: snap.punch_out_photo ?? existingLog.punch_out_photo ?? null,
-              marked_by: snap.marked_by || 'Self (Geo-Photo)',
-              edited_by: snap.edited_by || null,
-              edited_by_role: snap.edited_by_role || null,
-              edited_by_code: snap.edited_by_code || null,
-              edited_action: snap.edited_action || null,
-              edited_at: snap.edited_at || null
-            };
+        // CASE 2: Employee DID Punch In -> Same-day undo until 12:00 AM IST for Coordinator (and anytime for Admin) restores exact original punch-in, punch-out, photos, location & Self badge
+        if (isSelfPunchRecord) {
+          manualUndoCooldownMap[key] = nowMs;
+          const snap = existingLog._preEditSnapshot || {};
+          const restoredRecord = {
+            emp_code: emp.emp_code,
+            full_name: emp.full_name,
+            zone_name: emp.zone_name,
+            att_date: targetDate,
+            att_time: snap.att_time || existingLog.att_time || '-',
+            punch_in_ts: snap.punch_in_ts ?? existingLog.punch_in_ts ?? null,
+            punch_out_time: snap.punch_out_time || existingLog.punch_out_time || '-',
+            punch_out_ts: snap.punch_out_ts ?? existingLog.punch_out_ts ?? null,
+            work_duration: snap.work_duration || existingLog.work_duration || '-',
+            work_minutes: snap.work_minutes ?? existingLog.work_minutes ?? 0,
+            status: snap.status || 'Present',
+            lat: snap.lat ?? existingLog.lat ?? null,
+            lng: snap.lng ?? existingLog.lng ?? null,
+            punch_out_lat: snap.punch_out_lat ?? existingLog.punch_out_lat ?? null,
+            punch_out_lng: snap.punch_out_lng ?? existingLog.punch_out_lng ?? null,
+            recorded_address: snap.recorded_address || existingLog.recorded_address || 'Location Captured',
+            punch_out_address: snap.punch_out_address || existingLog.punch_out_address || '-',
+            photo_url: snap.photo_url ?? existingLog.photo_url ?? null,
+            photo_base64: snap.photo_base64 ?? existingLog.photo_base64 ?? null,
+            punch_out_photo: snap.punch_out_photo ?? existingLog.punch_out_photo ?? null,
+            marked_by: snap.marked_by || 'Self (Geo-Photo)',
+            edited_by: snap.edited_by || null,
+            edited_by_role: snap.edited_by_role || null,
+            edited_by_code: snap.edited_by_code || null,
+            edited_action: snap.edited_action || null,
+            edited_at: snap.edited_at || null
+          };
 
-            attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
-            attendanceData.unshift(restoredRecord);
-            saveLocalFallback();
-            renderDashboard();
-            if (activeProfileEmpCode === empCode) {
-              renderEmployeeProfileHistory();
-              renderProfileCalendar();
-            }
-            await syncAttendanceRecordToSupabase(restoredRecord);
-            showToastNotice(`↩ Undid status change for ${emp.full_name} — original Punch In/Out, photos & location restored.`);
-            return;
-          } else {
-            return showToastNotice("⏱️ 30-second undo window has expired for this punch-in record.");
+          attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
+          attendanceData.unshift(restoredRecord);
+          saveLocalFallback();
+          renderDashboard();
+          if (activeProfileEmpCode === empCode) {
+            renderEmployeeProfileHistory();
+            renderProfileCalendar();
           }
+          await syncAttendanceRecordToSupabase(restoredRecord);
+          showToastNotice(`↩ Undid status change for ${emp.full_name} — original Punch In/Out, photos & location restored.`);
+          return;
         }
       }
 
@@ -3744,7 +3754,10 @@
         renderProfileCalendar();
       }
       if (isSelfPunchRecord) {
-        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} — Punch In/Out, Location & Photo preserved (Click ${newStatus} again within 30s to undo).`);
+        const undoHint = currentUser.role === 'coordinator'
+          ? `(Click ${newStatus} again before 12:00 AM IST to undo)`
+          : `(Click ${newStatus} again to undo)`;
+        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} — Punch In/Out, Location & Photo preserved ${undoHint}.`);
       } else {
         showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} by ${currentUser.full_name} at ${nowTime}.`);
       }
@@ -3757,6 +3770,9 @@
       if (!emp || emp.role === 'admin') return;
       if (currentUser.role === 'coordinator' && (!canCoordinatorAccessEmployee(emp) || emp.role === 'coordinator' || emp.emp_code === currentUser.emp_code)) {
         return showToastNotice("Coordinators can only mark their own Punch Out via the camera screen.");
+      }
+      if (isDateLockedForCoordinator(targetDate)) {
+        return showToastNotice("🔒 Past attendance is locked after 12:00 AM IST. Please contact Admin for any changes.");
       }
 
       const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
@@ -3791,6 +3807,10 @@
       const targetDate = document.getElementById('mpo-att-date').value;
       const rawTime24 = document.getElementById('mpo-time-input').value;
       if (!empCode || !targetDate || !rawTime24) return;
+      if (isDateLockedForCoordinator(targetDate)) {
+        closeManualPunchOutModal();
+        return showToastNotice("🔒 Past attendance is locked after 12:00 AM IST. Please contact Admin for any changes.");
+      }
 
       const emp = usersData.find(u => u.emp_code === empCode);
       const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
@@ -3881,6 +3901,10 @@
       const startEl = document.getElementById('prof-leave-start');
       const endEl = document.getElementById('prof-leave-end');
       const badgeEl = document.getElementById('prof-leave-days-badge');
+      const applyBtn = document.getElementById('btn-prof-apply-leave');
+      const applyIcon = document.getElementById('btn-prof-apply-leave-icon');
+      const applyText = document.getElementById('btn-prof-apply-leave-text');
+      const clearBtn = document.getElementById('btn-prof-clear-leave');
       if (!startEl || !endEl) return;
       const sVal = startEl.value || selectedSideCalDate || getTodayISTDateStr();
       let eVal = endEl.value || sVal;
@@ -3890,10 +3914,38 @@
       }
       const dates = enumerateDatesInclusive(sVal, eVal);
       const count = dates.length || 1;
+      const hasLockedPastDate = dates.some(d => isDateLockedForCoordinator(d));
+
       if (badgeEl) {
-        badgeEl.textContent = count === 1
-          ? `1 Day (${formatDateDDMMYYYY(sVal)})`
-          : `${count} Days (${formatDateDDMMYYYY(sVal)} → ${formatDateDDMMYYYY(eVal)})`;
+        if (hasLockedPastDate) {
+          badgeEl.textContent = `🔒 Past Date Locked (Admin Only)`;
+          badgeEl.className = 'text-[9.5px] font-extrabold bg-slate-200 text-slate-700 border border-slate-300 px-2 py-0.5 rounded-md shrink-0';
+        } else {
+          badgeEl.textContent = count === 1
+            ? `1 Day (${formatDateDDMMYYYY(sVal)})`
+            : `${count} Days (${formatDateDDMMYYYY(sVal)} → ${formatDateDDMMYYYY(eVal)})`;
+          badgeEl.className = 'text-[9.5px] font-extrabold bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-md shrink-0';
+        }
+      }
+
+      if (applyBtn && applyText && applyIcon) {
+        if (hasLockedPastDate) {
+          applyBtn.className = 'flex-1 bg-slate-200 text-slate-500 border border-slate-300 font-extrabold py-1.5 px-3 rounded-lg text-[11px] transition flex items-center justify-center gap-1 cursor-not-allowed';
+          applyIcon.textContent = '🔒';
+          applyText.textContent = 'Locked (Admin Only)';
+        } else {
+          applyBtn.className = 'flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-1.5 px-3 rounded-lg text-[11px] shadow-sm transition flex items-center justify-center gap-1';
+          applyIcon.textContent = '✔';
+          applyText.textContent = 'Apply Leave (From–To)';
+        }
+      }
+
+      if (clearBtn) {
+        if (hasLockedPastDate) {
+          clearBtn.className = 'shrink-0 bg-slate-100 text-slate-400 border border-slate-300 font-extrabold py-1.5 px-2.5 rounded-lg text-[11px] transition cursor-not-allowed';
+        } else {
+          clearBtn.className = 'shrink-0 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-extrabold py-1.5 px-2.5 rounded-lg text-[11px] transition';
+        }
       }
     }
 
@@ -3973,13 +4025,19 @@
         return uLog && uLog.status === 'Holiday';
       });
 
+      const isSelectedDateLockedForCoord = isDateLockedForCoordinator(targetDate);
       if (holText && holBtn) {
-        holText.textContent = allAreaMarkedHoliday
-          ? `Undo All ${areaName} Holiday`
-          : `All ${areaName} Staff Holiday`;
-        holBtn.className = allAreaMarkedHoliday
-          ? 'bg-purple-600 hover:bg-purple-700 text-white border border-purple-700 font-extrabold py-1.5 px-2 rounded-lg text-[10.5px] transition flex items-center justify-center gap-1 shadow-sm'
-          : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 font-extrabold py-1.5 px-2 rounded-lg text-[10.5px] transition flex items-center justify-center gap-1 shadow-sm';
+        if (isSelectedDateLockedForCoord) {
+          holText.textContent = `🔒 Past Holiday (Admin Only)`;
+          holBtn.className = 'bg-slate-100 text-slate-500 border border-slate-300 font-extrabold py-1.5 px-2 rounded-lg text-[10.5px] transition flex items-center justify-center gap-1 cursor-not-allowed';
+        } else {
+          holText.textContent = allAreaMarkedHoliday
+            ? `Undo All ${areaName} Holiday`
+            : `All ${areaName} Staff Holiday`;
+          holBtn.className = allAreaMarkedHoliday
+            ? 'bg-purple-600 hover:bg-purple-700 text-white border border-purple-700 font-extrabold py-1.5 px-2 rounded-lg text-[10.5px] transition flex items-center justify-center gap-1 shadow-sm'
+            : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 font-extrabold py-1.5 px-2 rounded-lg text-[10.5px] transition flex items-center justify-center gap-1 shadow-sm';
+        }
       }
 
       const startEl = document.getElementById('prof-leave-start');
@@ -3998,6 +4056,9 @@
       }
 
       const targetDate = selectedSideCalDate || getTodayISTDateStr();
+      if (isDateLockedForCoordinator(targetDate)) {
+        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — only Admin can change or undo past Staff Holidays.");
+      }
       const areaName = emp.zone_name;
       const areaStaff = usersData.filter(u =>
         u.status === 'active' &&
@@ -4022,6 +4083,12 @@
             if (hasEmployeeSelfPunch(a)) {
               a.status = 'Present';
               a.reason_note = null;
+              a.edited_by = null;
+              a.edited_by_role = null;
+              a.edited_by_code = null;
+              a.edited_action = null;
+              a.edited_at = null;
+              a._isManualOverride = false;
               restoredList.push(a);
               return true;
             }
@@ -4109,6 +4176,9 @@
       if (!dates.length) {
         return showToastNotice("Please select a valid Leave From and Leave To date range.");
       }
+      if (dates.some(d => isDateLockedForCoordinator(d))) {
+        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — please select today or future dates, or contact Admin.");
+      }
 
       const customReason = (document.getElementById('prof-leave-reason')?.value || '').trim();
       const rangeLabel = dates.length === 1
@@ -4176,6 +4246,9 @@
       const endD = document.getElementById('prof-leave-end')?.value || startD;
       const dates = enumerateDatesInclusive(startD, endD);
       if (!dates.length) return;
+      if (dates.some(d => isDateLockedForCoordinator(d))) {
+        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — only Admin can clear or alter past Leave records.");
+      }
 
       const dateSet = new Set(dates);
       const recordsToRestore = [];
@@ -4185,6 +4258,12 @@
           if (hasEmployeeSelfPunch(a)) {
             a.status = 'Present';
             a.reason_note = null;
+            a.edited_by = null;
+            a.edited_by_role = null;
+            a.edited_by_code = null;
+            a.edited_action = null;
+            a.edited_at = null;
+            a._isManualOverride = false;
             recordsToRestore.push(a);
             return true;
           }
@@ -4255,6 +4334,9 @@
       const emp = usersData.find(u => u.emp_code === activeProfileEmpCode);
       if (!canManageProfileStaff(emp)) {
         return showToastNotice("You can only mark Staff Holiday for employees in your assigned area.");
+      }
+      if (isDateLockedForCoordinator(targetDate)) {
+        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — only Admin can change past Staff Holidays.");
       }
 
       const existingLog = attendanceData.find(a => a.emp_code === activeProfileEmpCode && a.att_date === targetDate);
@@ -5237,6 +5319,21 @@
     function closePhotoModal() {
       document.getElementById('photo-modal').classList.add('hidden');
     }
+
+    let lastObservedISTDate = getTodayISTDateStr();
+    setInterval(() => {
+      const curIST = getTodayISTDateStr();
+      if (curIST !== lastObservedISTDate) {
+        lastObservedISTDate = curIST;
+        if (currentUser) {
+          renderDashboard();
+          if (activeProfileEmpCode) {
+            updateSelectedDateActionPanel();
+            renderProfileCalendar();
+          }
+        }
+      }
+    }, 30000);
   </script>
 </body>
 </html>
