@@ -2945,7 +2945,7 @@
           const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === filterStartDate);
           const holidayNote = companyHolidays[filterStartDate];
           const defaultDesig = emp.role === 'coordinator' ? 'Coordinator' : (isAdmin ? 'Admin' : 'Employee');
-          const resolvedStatus = isAdmin ? '-' : (log ? log.status : (holidayNote ? 'Holiday' : '-'));
+          const resolvedStatus = isAdmin ? '-' : ((log && log.status && log.status !== '-') ? log.status : (holidayNote ? 'Holiday' : 'Absent'));
           const resolvedAddress = isAdmin ? '-' : (log ? (log.recorded_address || 'Location Captured') : (holidayNote ? `🎉 Company Holiday: ${holidayNote}` : 'Not Marked Yet'));
           const durObj = isAdmin ? { text: '-', minutes: 0, decimalHours: '0.00' } : computeWorkDurationInfo(log);
           rows.push({
@@ -2981,50 +2981,50 @@
           });
         });
       } else {
-        const rangeLogs = attendanceData.filter(a =>
-          a.att_date >= filterStartDate &&
-          a.att_date <= filterEndDate &&
-          !isPanIndiaZone(a.zone_name) &&
-          (!selectedArea || selectedArea === 'ALL' || normZone(a.zone_name) === normZone(selectedArea))
-        );
-        rangeLogs.forEach(log => {
-          const emp = usersData.find(u => u.emp_code === log.emp_code);
-          if (currentUser.role === 'coordinator' && !canCoordinatorAccessEmployee(emp)) return;
-          const empRole = emp?.role || 'employee';
-          if (roleFilter !== 'ALL' && empRole !== roleFilter) return;
-          const isAdmin = empRole === 'admin';
-          const defaultDesig = empRole === 'coordinator' ? 'Coordinator' : (isAdmin ? 'Admin' : 'Employee');
-          const durObj = isAdmin ? { text: '-', minutes: 0, decimalHours: '0.00' } : computeWorkDurationInfo(log);
-          rows.push({
-            att_date: log.att_date,
-            emp_code: log.emp_code,
-            full_name: log.full_name,
-            role: empRole,
-            designation: emp?.designation || defaultDesig,
-            zone_name: isAdmin ? '-' : log.zone_name,
-            aadhaar_card: getUserAadhaar(emp),
-            pan_card: getUserPan(emp),
-            status: isAdmin ? '-' : log.status,
-            att_time: isAdmin ? '-' : (log.att_time || '-'),
-            punch_out_time: isAdmin ? '-' : (log.punch_out_time || '-'),
-            work_duration: durObj.text,
-            work_minutes: durObj.minutes,
-            work_decimal_hours: durObj.decimalHours,
-            lat: isAdmin ? null : log.lat,
-            lng: isAdmin ? null : log.lng,
-            punch_out_lat: isAdmin ? null : log.punch_out_lat,
-            punch_out_lng: isAdmin ? null : log.punch_out_lng,
-            recorded_address: isAdmin ? '-' : (log.recorded_address || 'Location Captured'),
-            reason_note: isAdmin ? null : (log.reason_note || null),
-            punch_out_address: isAdmin ? '-' : (log.punch_out_address || '-'),
-            photo_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, false),
-            photo_out_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, true),
-            marked_by: isAdmin ? '-' : (log.marked_by || 'Self'),
-            edited_by: isAdmin ? null : (log.edited_by || null),
-            edited_by_role: isAdmin ? null : (log.edited_by_role || null),
-            edited_by_code: isAdmin ? null : (log.edited_by_code || null),
-            edited_action: isAdmin ? null : (log.edited_action || null),
-            edited_at: isAdmin ? null : (log.edited_at || null)
+        const todayIST = getTodayISTDateStr();
+        const cappedEnd = filterEndDate > todayIST ? todayIST : filterEndDate;
+        const rangeDates = enumerateDatesInclusive(filterStartDate, cappedEnd >= filterStartDate ? cappedEnd : filterEndDate).reverse();
+        rangeDates.forEach(dStr => {
+          const holidayNote = companyHolidays[dStr];
+          filteredStaff.forEach(emp => {
+            const isAdmin = emp.role === 'admin';
+            if (isAdmin && dStr !== rangeDates[0]) return;
+            const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === dStr);
+            const defaultDesig = emp.role === 'coordinator' ? 'Coordinator' : (isAdmin ? 'Admin' : 'Employee');
+            const resolvedStatus = isAdmin ? '-' : ((log && log.status && log.status !== '-') ? log.status : (holidayNote ? 'Holiday' : 'Absent'));
+            const resolvedAddress = isAdmin ? '-' : (log ? (log.recorded_address || 'Location Captured') : (holidayNote ? `🎉 Company Holiday: ${holidayNote}` : 'Not Marked Yet'));
+            const durObj = isAdmin ? { text: '-', minutes: 0, decimalHours: '0.00' } : computeWorkDurationInfo(log);
+            rows.push({
+              att_date: dStr,
+              emp_code: emp.emp_code,
+              full_name: emp.full_name,
+              role: emp.role,
+              designation: emp.designation || defaultDesig,
+              zone_name: isAdmin ? '-' : (emp.zone_name || '-'),
+              aadhaar_card: getUserAadhaar(emp),
+              pan_card: getUserPan(emp),
+              status: resolvedStatus,
+              att_time: isAdmin ? '-' : (log ? log.att_time : '-'),
+              punch_out_time: isAdmin ? '-' : (log && log.punch_out_time ? log.punch_out_time : '-'),
+              work_duration: durObj.text,
+              work_minutes: durObj.minutes,
+              work_decimal_hours: durObj.decimalHours,
+              lat: isAdmin ? null : (log ? log.lat : null),
+              lng: isAdmin ? null : (log ? log.lng : null),
+              punch_out_lat: isAdmin ? null : (log ? log.punch_out_lat : null),
+              punch_out_lng: isAdmin ? null : (log ? log.punch_out_lng : null),
+              recorded_address: resolvedAddress,
+              reason_note: isAdmin ? null : (log && log.reason_note ? log.reason_note : null),
+              punch_out_address: isAdmin ? '-' : (log && log.punch_out_address ? log.punch_out_address : '-'),
+              photo_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, false),
+              photo_out_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, true),
+              marked_by: isAdmin ? '-' : (log ? log.marked_by : '-'),
+              edited_by: isAdmin ? null : (log ? log.edited_by : null),
+              edited_by_role: isAdmin ? null : (log ? log.edited_by_role : null),
+              edited_by_code: isAdmin ? null : (log ? log.edited_by_code : null),
+              edited_action: isAdmin ? null : (log ? log.edited_action : null),
+              edited_at: isAdmin ? null : (log ? log.edited_at : null)
+            });
           });
         });
       }
@@ -3330,18 +3330,24 @@
         if (isSingleDate) {
           zoneEmps.forEach(emp => {
             const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === filterStartDate);
-            const st = log ? log.status : (companyHolidays[filterStartDate] ? 'Holiday' : '-');
+            const st = (log && log.status && log.status !== '-') ? log.status : (companyHolidays[filterStartDate] ? 'Holiday' : 'Absent');
             if (st === 'Present') p++;
             else if (st === 'Leave' || st === 'Holiday') l++;
             else if (st === 'Absent') a++;
           });
         } else {
-          attendanceData.forEach(x => {
-            if (x.att_date >= filterStartDate && x.att_date <= filterEndDate && (zoneEmpCodes.has(x.emp_code) || normZone(x.zone_name) === normZone(z.zone_name))) {
-              if (x.status === 'Present') p++;
-              else if (x.status === 'Leave' || x.status === 'Holiday') l++;
-              else if (x.status === 'Absent') a++;
-            }
+          const todayIST = getTodayISTDateStr();
+          const cappedEnd = filterEndDate > todayIST ? todayIST : filterEndDate;
+          const rangeDates = enumerateDatesInclusive(filterStartDate, cappedEnd >= filterStartDate ? cappedEnd : filterEndDate);
+          rangeDates.forEach(dStr => {
+            const isHol = Boolean(companyHolidays[dStr]);
+            zoneEmps.forEach(emp => {
+              const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === dStr);
+              const st = (log && log.status && log.status !== '-') ? log.status : (isHol ? 'Holiday' : 'Absent');
+              if (st === 'Present') p++;
+              else if (st === 'Leave' || st === 'Holiday') l++;
+              else if (st === 'Absent') a++;
+            });
           });
         }
 
@@ -3997,7 +4003,7 @@
       const compHoliday = companyHolidays[targetDate];
       const effectiveStatus = (log && log.status && log.status !== '-')
         ? log.status
-        : (compHoliday ? 'Holiday' : '-');
+        : (compHoliday ? 'Holiday' : 'Absent');
 
       if (pillEl) {
         if (effectiveStatus === 'Present') {
@@ -4481,13 +4487,15 @@
           monthGazetteItems.push({ dateStr, name: compHoliday });
         }
 
-        const effectiveStatus = log ? log.status : (compHoliday ? 'Holiday' : null);
+        const effectiveStatus = (log && log.status && log.status !== '-')
+          ? log.status
+          : (compHoliday ? 'Holiday' : (!isSunday && dateStr <= todayIST ? 'Absent' : null));
 
         const dispDate = formatDateDDMMYYYY(dateStr);
         let bgHex = '#ffffff';
         let borderStyle = 'border-slate-200 text-slate-700';
         let shortCode = '';
-        let titleTip = `${dispDate}${isSunday ? ' (Sunday)' : ''}: Not Marked`;
+        let titleTip = `${dispDate}${isSunday ? ' (Sunday)' : ''}: Absent (Default)`;
 
         if (isSunday && !effectiveStatus) {
           bgHex = sectionColors.Sunday || DEFAULT_SECTION_COLORS.Sunday;
@@ -5020,7 +5028,7 @@
         const dayCells = monthDates.map(dStr => {
           const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === dStr);
           const holName = companyHolidays[dStr];
-          const st = log ? log.status : (holName ? 'Holiday' : '-');
+          const st = (log && log.status && log.status !== '-') ? log.status : (holName ? 'Holiday' : 'Absent');
           if (log) {
             const dInfo = computeWorkDurationInfo(log);
             empMins += (dInfo.minutes || 0);
@@ -5029,7 +5037,8 @@
           if (st === 'Absent') { aCnt++; return 'A'; }
           if (st === 'Leave') { lCnt++; return 'L'; }
           if (st === 'Holiday') { hCnt++; return 'H'; }
-          return '-';
+          aCnt++;
+          return 'A';
         });
 
         const eHrs = Math.floor(empMins / 60);
