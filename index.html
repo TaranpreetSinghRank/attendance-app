@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <meta name="theme-color" content="#1e3a8a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AIILSG" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <title>AIILSG Attendance</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -128,11 +135,16 @@
           <p class="text-[10px] sm:text-[11px] text-blue-200 truncate">AIILSG-Attendance System</p>
         </div>
       </div>
-      <div id="user-session-bar" class="hidden flex items-center gap-1.5 sm:gap-2 min-w-0">
-        <span id="logged-user-badge" class="text-[11px] sm:text-xs bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-semibold border border-white/15 truncate max-w-[135px] sm:max-w-[260px] md:max-w-md"></span>
-        <button onclick="logout()" class="shrink-0 bg-rose-600 hover:bg-rose-700 text-white text-xs px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1">
-          <i data-lucide="log-out" class="w-3.5 h-3.5"></i> <span>Logout</span>
+      <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+        <button id="btn-pwa-install" type="button" onclick="triggerPWAInstall()" class="hidden shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-lg font-extrabold shadow transition flex items-center gap-1">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> <span>Install App</span>
         </button>
+        <div id="user-session-bar" class="hidden flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <span id="logged-user-badge" class="text-[11px] sm:text-xs bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-semibold border border-white/15 truncate max-w-[135px] sm:max-w-[260px] md:max-w-md"></span>
+          <button onclick="logout()" class="shrink-0 bg-rose-600 hover:bg-rose-700 text-white text-xs px-2.5 sm:px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i> <span>Logout</span>
+          </button>
+        </div>
       </div>
     </div>
   </header>
@@ -359,7 +371,7 @@
 
           <div class="flex flex-wrap items-center justify-end gap-2 w-full lg:w-auto">
             <button onclick="exportFilteredToExcelCSV()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-sm flex items-center justify-center gap-1.5">
-              <i data-lucide="download" class="w-4 h-4"></i> <span>Export Excel (.CSV)</span>
+              <i data-lucide="download" class="w-4 h-4"></i> <span>Export Excel (.XLSX)</span>
             </button>
           </div>
         </div>
@@ -1096,6 +1108,13 @@
       return Boolean(logOrRow.att_date && logOrRow.att_date < getTodayISTDateStr());
     }
 
+    // Coordinator Past-Date Lock: Coordinators cannot edit any date before today (locks at 12:00 AM IST midnight)
+    function isDateLockedForCoordinator(dateStr) {
+      if (!currentUser || currentUser.role !== 'coordinator') return false;
+      if (!dateStr) return false;
+      return dateStr < getTodayISTDateStr();
+    }
+
     function format24hTo12hAMPM(hhmm) {
       if (!hhmm || !hhmm.includes(':')) return hhmm;
       const [hStr, mStr] = hhmm.split(':');
@@ -1673,10 +1692,12 @@
             try {
               const meta = JSON.parse(metaPart.substring(0, endBracket));
               if (meta.inTime && (!log.att_time || log.att_time === '-')) log.att_time = meta.inTime;
+              if (meta.inAddr && (!cleanAddr || cleanAddr.startsWith('Marked ') || cleanAddr.startsWith('🎉') || cleanAddr.startsWith('🗓️'))) {
+                log._recoveredInAddr = meta.inAddr;
+              }
               if (meta.outTime && (!log.punch_out_time || log.punch_out_time === '-')) log.punch_out_time = meta.outTime;
               if (meta.dur && (!log.work_duration || log.work_duration === '-')) log.work_duration = meta.dur;
               if (meta.mins !== undefined && !log.work_minutes) log.work_minutes = Number(meta.mins) || 0;
-              if (meta.inAddr && (!cleanAddr || /^Marked\s+/i.test(cleanAddr))) log.recorded_address = meta.inAddr;
               if (meta.outAddr && (!log.punch_out_address || log.punch_out_address === '-')) log.punch_out_address = meta.outAddr;
               if (meta.outLat && !log.punch_out_lat) log.punch_out_lat = meta.outLat;
               if (meta.outLng && !log.punch_out_lng) log.punch_out_lng = meta.outLng;
@@ -1700,9 +1721,8 @@
               }
             } catch (e) {}
           }
-          if (!log.recorded_address || log.recorded_address.indexOf(' [PUNCH_OUT_META:') !== -1) {
-            log.recorded_address = cleanAddr;
-          }
+          log.recorded_address = log._recoveredInAddr || cleanAddr;
+          delete log._recoveredInAddr;
         } else if (log.recorded_address.includes(' | Out: ')) {
           const splitPipe = log.recorded_address.split(' | Out: ');
           log.recorded_address = splitPipe[0].trim();
@@ -1715,62 +1735,61 @@
         }
       }
 
-      // 3. Recover Punch-In / Punch-Out timestamps & times from selfie storage filenames (_IN_<ts>.jpg / _OUT_<ts>.jpg) or preSnap if overwritten
-      const snap = log._preEditSnapshot;
-      if (snap) {
-        if ((!log.att_time || log.att_time === '-') && snap.att_time && snap.att_time !== '-') log.att_time = snap.att_time;
-        if (!log.punch_in_ts && snap.punch_in_ts) log.punch_in_ts = snap.punch_in_ts;
-        if ((!log.punch_out_time || log.punch_out_time === '-') && snap.punch_out_time && snap.punch_out_time !== '-') log.punch_out_time = snap.punch_out_time;
-        if (!log.punch_out_ts && snap.punch_out_ts) log.punch_out_ts = snap.punch_out_ts;
-        if (log.lat == null && snap.lat != null) log.lat = snap.lat;
-        if (log.lng == null && snap.lng != null) log.lng = snap.lng;
-        if (log.punch_out_lat == null && snap.punch_out_lat != null) log.punch_out_lat = snap.punch_out_lat;
-        if (log.punch_out_lng == null && snap.punch_out_lng != null) log.punch_out_lng = snap.punch_out_lng;
-        if ((!log.recorded_address || /^Marked\s+/i.test(log.recorded_address)) && snap.recorded_address) log.recorded_address = snap.recorded_address;
-        if ((!log.punch_out_address || log.punch_out_address === '-') && snap.punch_out_address && snap.punch_out_address !== '-') log.punch_out_address = snap.punch_out_address;
-        if (!log.photo_url && snap.photo_url) log.photo_url = snap.photo_url;
-        if (!log.photo_base64 && snap.photo_base64) log.photo_base64 = snap.photo_base64;
-        if (!log.punch_out_photo && snap.punch_out_photo) log.punch_out_photo = snap.punch_out_photo;
+      // 3. Recover any Punch-In / Punch-Out data preserved inside _preEditSnapshot or selfie filenames
+      if (log._preEditSnapshot) {
+        const s = log._preEditSnapshot;
+        if ((!log.att_time || log.att_time === '-') && s.att_time && s.att_time !== '-') log.att_time = s.att_time;
+        if (!log.punch_in_ts && s.punch_in_ts) log.punch_in_ts = s.punch_in_ts;
+        if ((!log.punch_out_time || log.punch_out_time === '-') && s.punch_out_time && s.punch_out_time !== '-') log.punch_out_time = s.punch_out_time;
+        if (!log.punch_out_ts && s.punch_out_ts) log.punch_out_ts = s.punch_out_ts;
+        if (log.lat == null && s.lat != null) log.lat = s.lat;
+        if (log.lng == null && s.lng != null) log.lng = s.lng;
+        if (log.punch_out_lat == null && s.punch_out_lat != null) log.punch_out_lat = s.punch_out_lat;
+        if (log.punch_out_lng == null && s.punch_out_lng != null) log.punch_out_lng = s.punch_out_lng;
+        if ((!log.recorded_address || log.recorded_address.startsWith('Marked ')) && s.recorded_address) log.recorded_address = s.recorded_address;
+        if ((!log.punch_out_address || log.punch_out_address === '-') && s.punch_out_address && s.punch_out_address !== '-') log.punch_out_address = s.punch_out_address;
+        if (!log.photo_url && s.photo_url) log.photo_url = s.photo_url;
+        if (!log.photo_base64 && s.photo_base64) log.photo_base64 = s.photo_base64;
+        if (!log.punch_out_photo && s.punch_out_photo) log.punch_out_photo = s.punch_out_photo;
       }
 
-      const inPhotoStr = (log.photo_url || log.photo_base64 || '').toString();
-      const inTsMatch = inPhotoStr.match(/_IN_(\d{10,15})/i);
-      if (inTsMatch) {
-        const inTsNum = Number(inTsMatch[1]);
-        if (!isNaN(inTsNum) && inTsNum > 1000000000000) {
-          if (!log.punch_in_ts) log.punch_in_ts = inTsNum;
-          if (!log.att_time || log.att_time === '-') {
-            log.att_time = getCurrentISTTime12h(new Date(inTsNum));
+      const inPhotoSrc = (log.photo_url || log.photo_base64 || '').toString();
+      if ((!log.att_time || log.att_time === '-') && inPhotoSrc) {
+        const mIn = inPhotoSrc.match(/_IN_(\d{10,15})/i);
+        if (mIn) {
+          const ts = Number(mIn[1]);
+          if (ts > 1000000000000) {
+            if (!log.punch_in_ts) log.punch_in_ts = ts;
+            log.att_time = getCurrentISTTime12h(new Date(ts));
           }
         }
       }
 
-      const outPhotoStr = (log.punch_out_photo || log.out_photo_url || '').toString();
-      const outTsMatch = outPhotoStr.match(/_OUT_(\d{10,15})/i);
-      if (outTsMatch) {
-        const outTsNum = Number(outTsMatch[1]);
-        if (!isNaN(outTsNum) && outTsNum > 1000000000000) {
-          if (!log.punch_out_ts) log.punch_out_ts = outTsNum;
-          if (!log.punch_out_time || log.punch_out_time === '-') {
-            log.punch_out_time = getCurrentISTTime12h(new Date(outTsNum));
+      const outPhotoSrc = (log.punch_out_photo || log.out_photo_url || '').toString();
+      if ((!log.punch_out_time || log.punch_out_time === '-') && outPhotoSrc) {
+        const mOut = outPhotoSrc.match(/_OUT_(\d{10,15})/i);
+        if (mOut) {
+          const ts = Number(mOut[1]);
+          if (ts > 1000000000000) {
+            if (!log.punch_out_ts) log.punch_out_ts = ts;
+            log.punch_out_time = getCurrentISTTime12h(new Date(ts));
           }
         }
+      }
+      if ((!log.punch_out_time || log.punch_out_time === '-') && log.punch_out_ts) {
+        log.punch_out_time = getCurrentISTTime12h(new Date(Number(log.punch_out_ts)));
       }
 
       const hasAnyOutEvidence = Boolean(
         (log.punch_out_time && log.punch_out_time !== '-') ||
         log.punch_out_photo ||
-        log.out_photo_url ||
-        log.out_lat != null ||
-        (log.out_recorded_address && log.out_recorded_address !== '-')
+        log.out_photo_url
       );
       if (hasAnyOutEvidence) {
         if (log.punch_out_lat == null && log.lat != null) log.punch_out_lat = Number(log.lat);
         if (log.punch_out_lng == null && log.lng != null) log.punch_out_lng = Number(log.lng);
-        if (!log.punch_out_address || log.punch_out_address === '-') {
-          log.punch_out_address = (log.recorded_address && !/^Marked\s+/i.test(log.recorded_address))
-            ? log.recorded_address
-            : `Simulated Location (${log.zone_name || 'Captured'})`;
+        if ((!log.punch_out_address || log.punch_out_address === '-') && log.recorded_address) {
+          log.punch_out_address = log.recorded_address;
         }
       }
 
@@ -1786,9 +1805,7 @@
       const hasOut = Boolean(
         (record.punch_out_time && record.punch_out_time !== '-') ||
         record.punch_out_photo ||
-        record.out_photo_url ||
-        record.punch_out_lat != null ||
-        record.out_lat != null
+        record.out_photo_url
       );
       const cleanInTime = (record.att_time || '-').split('->')[0].trim();
       const cleanInAddr = (record.recorded_address || '').split(' [PUNCH_OUT_META:')[0].split(' | Out: ')[0].trim();
@@ -1799,9 +1816,7 @@
       const metaObj = {};
       if (hasIn) {
         metaObj.inTime = cleanInTime;
-        if (cleanInAddr && !/^Marked\s+/i.test(cleanInAddr)) {
-          metaObj.inAddr = cleanInAddr;
-        }
+        if (cleanInAddr) metaObj.inAddr = cleanInAddr;
       }
       if (hasOut) {
         if (record.punch_out_time && record.punch_out_time !== '-') {
@@ -2044,7 +2059,7 @@
           seenKeys.add(key);
           const localMatch = localMap[key];
           if (localMatch) {
-            // Preserve any non-empty Punch In & Punch Out fields from both remote and local
+            // Always preserve individual non-empty Punch In & Punch Out fields from localMatch if missing on remote
             if ((!hydrated.att_time || hydrated.att_time === '-') && localMatch.att_time && localMatch.att_time !== '-') {
               hydrated.att_time = localMatch.att_time;
             }
@@ -2053,11 +2068,15 @@
               hydrated.punch_out_time = localMatch.punch_out_time;
             }
             if (!hydrated.punch_out_ts && localMatch.punch_out_ts) hydrated.punch_out_ts = localMatch.punch_out_ts;
+            if ((!hydrated.work_duration || hydrated.work_duration === '-') && localMatch.work_duration && localMatch.work_duration !== '-') {
+              hydrated.work_duration = localMatch.work_duration;
+              hydrated.work_minutes = localMatch.work_minutes || 0;
+            }
             if (hydrated.lat == null && localMatch.lat != null) hydrated.lat = localMatch.lat;
             if (hydrated.lng == null && localMatch.lng != null) hydrated.lng = localMatch.lng;
             if (hydrated.punch_out_lat == null && localMatch.punch_out_lat != null) hydrated.punch_out_lat = localMatch.punch_out_lat;
             if (hydrated.punch_out_lng == null && localMatch.punch_out_lng != null) hydrated.punch_out_lng = localMatch.punch_out_lng;
-            if ((!hydrated.recorded_address || /^Marked\s+/i.test(hydrated.recorded_address)) && localMatch.recorded_address && !/^Marked\s+/i.test(localMatch.recorded_address)) {
+            if ((!hydrated.recorded_address || hydrated.recorded_address.startsWith('Marked ')) && localMatch.recorded_address && !localMatch.recorded_address.startsWith('Marked ')) {
               hydrated.recorded_address = localMatch.recorded_address;
             }
             if ((!hydrated.punch_out_address || hydrated.punch_out_address === '-') && localMatch.punch_out_address && localMatch.punch_out_address !== '-') {
@@ -2066,33 +2085,29 @@
             if (!hydrated.punch_out_photo && localMatch.punch_out_photo) {
               hydrated.punch_out_photo = localMatch.punch_out_photo;
             }
-            if (!hydrated.out_photo_url && localMatch.out_photo_url) {
-              hydrated.out_photo_url = localMatch.out_photo_url;
-            }
             if (!hydrated.photo_base64 && localMatch.photo_base64) {
               hydrated.photo_base64 = localMatch.photo_base64;
             }
             if (!hydrated.photo_url && localMatch.photo_url) {
               hydrated.photo_url = localMatch.photo_url;
             }
+            if (!hydrated._preEditSnapshot && localMatch._preEditSnapshot) {
+              hydrated._preEditSnapshot = localMatch._preEditSnapshot;
+            }
             if (localMatch._isManualOverride && localMatch._manualOverrideTs && (!hydrated._manualOverrideTs || localMatch._manualOverrideTs >= hydrated._manualOverrideTs)) {
               hydrated.status = localMatch.status;
-              hydrated.edited_by = localMatch.edited_by || hydrated.edited_by;
-              hydrated.edited_by_role = localMatch.edited_by_role || hydrated.edited_by_role;
-              hydrated.edited_by_code = localMatch.edited_by_code || hydrated.edited_by_code;
-              hydrated.edited_action = localMatch.edited_action || hydrated.edited_action;
-              hydrated.edited_at = localMatch.edited_at || hydrated.edited_at;
-              hydrated.reason_note = localMatch.reason_note || hydrated.reason_note;
+              hydrated.edited_by = localMatch.edited_by;
+              hydrated.edited_by_role = localMatch.edited_by_role;
+              hydrated.edited_by_code = localMatch.edited_by_code;
+              hydrated.edited_action = localMatch.edited_action;
+              hydrated.edited_at = localMatch.edited_at;
               hydrated._isManualOverride = true;
-              hydrated._manualOverrideStatus = localMatch._manualOverrideStatus || localMatch.status;
+              hydrated._manualOverrideStatus = localMatch._manualOverrideStatus;
               hydrated._manualOverrideTs = localMatch._manualOverrideTs;
-              if (localMatch._preEditSnapshot && !hydrated._preEditSnapshot) {
-                hydrated._preEditSnapshot = localMatch._preEditSnapshot;
-              }
             }
-            const mergedDur = computeWorkDurationInfo(hydrated);
-            hydrated.work_duration = mergedDur.text;
-            hydrated.work_minutes = mergedDur.minutes;
+            const recomputed = computeWorkDurationInfo(hydrated);
+            hydrated.work_duration = recomputed.text;
+            hydrated.work_minutes = recomputed.minutes;
           }
           merged.push(hydrated);
         });
@@ -2112,57 +2127,17 @@
       return merged;
     }
 
-    // Smart date-range & employee attendance fetcher (replaces fixed .limit(300) / .limit(500) cutoff)
-    async function fetchAttendanceLogsForRange(startDate, endDate, empCode = null) {
-      if (!isSupabaseConfigured || !supabaseClient) return;
-      try {
-        let q = supabaseClient.from('attendance_logs').select('*');
-        if (startDate) q = q.gte('att_date', startDate);
-        if (endDate) q = q.lte('att_date', endDate);
-        if (empCode) {
-          q = q.eq('emp_code', empCode);
-        } else if (currentUser && currentUser.role === 'coordinator' && currentUser.zone_name) {
-          q = q.eq('zone_name', currentUser.zone_name);
-        }
-        const { data, error } = await q.order('att_date', { ascending: false }).limit(5000);
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const zoneScope = (!empCode && currentUser && currentUser.role === 'coordinator') ? currentUser.zone_name : null;
-          attendanceData = mergeRemoteAndLocalAttendance(data, zoneScope);
-          saveLocalFallback();
-          if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'coordinator')) {
-            renderDashboard();
-          }
-          const profModal = document.getElementById('employee-profile-modal');
-          if (profModal && !profModal.classList.contains('hidden') && currentProfileEmpCode) {
-            renderProfileCalendar();
-            renderEmployeeProfileHistory();
-          }
-        }
-      } catch (err) {
-        console.warn("Range fetch warning:", err);
-      }
-    }
-
-    function getDefaultInitialFetchStartDate() {
-      const todayIST = getTodayISTDateStr();
-      const [y, m] = todayIST.split('-').map(n => parseInt(n, 10));
-      const prevMonthStart = formatUTCDateYMD(new Date(Date.UTC(y, m - 2, 1)));
-      const activeStart = filterStartDate ? `${filterStartDate.slice(0, 7)}-01` : prevMonthStart;
-      return activeStart < prevMonthStart ? activeStart : prevMonthStart;
-    }
-
     async function loadAllData() {
       if (!isSupabaseConfigured) return;
       try {
         await supabaseClient.from('zones').delete().ilike('zone_name', '%Pan-India%');
-        const initStartDate = getDefaultInitialFetchStartDate();
 
         if (currentUser && currentUser.role === 'coordinator') {
           const myZone = currentUser.zone_name;
           const [zRes, uRes, aRes] = await Promise.all([
             supabaseClient.from('zones').select('*').eq('zone_name', myZone),
             supabaseClient.from('app_users').select('*').eq('zone_name', myZone),
-            supabaseClient.from('attendance_logs').select('*').eq('zone_name', myZone).gte('att_date', initStartDate).order('att_date', { ascending: false }).limit(5000)
+            supabaseClient.from('attendance_logs').select('*').eq('zone_name', myZone).order('att_date', { ascending: false }).limit(300)
           ]);
           if (zRes.data?.length) {
             const otherZones = zonesData.filter(z => normZone(z.zone_name) !== normZone(myZone));
@@ -2184,7 +2159,7 @@
           const [zRes, uRes, aRes] = await Promise.all([
             supabaseClient.from('zones').select('*').order('id'),
             supabaseClient.from('app_users').select('*').order('id'),
-            supabaseClient.from('attendance_logs').select('*').gte('att_date', initStartDate).order('att_date', { ascending: false }).limit(5000)
+            supabaseClient.from('attendance_logs').select('*').order('att_date', { ascending: false }).limit(500)
           ]);
           // Also check Supabase deleted_data table so deletions sync across all devices
           try {
@@ -2793,8 +2768,6 @@
           : 'px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
       });
       renderDashboard();
-      const monthFloor = `${filterStartDate.slice(0, 7)}-01`;
-      fetchAttendanceLogsForRange(monthFloor, filterEndDate);
     }
 
     function onCustomDateChange() {
@@ -2806,8 +2779,6 @@
         document.getElementById(`preset-${p}`).className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200';
       });
       renderDashboard();
-      const monthFloor = `${filterStartDate.slice(0, 7)}-01`;
-      fetchAttendanceLogsForRange(monthFloor, filterEndDate);
     }
 
     function openDashboardPortal() {
@@ -3028,12 +2999,19 @@
         const todayIST = getTodayISTDateStr();
         const cappedEnd = filterEndDate > todayIST ? todayIST : filterEndDate;
         const rangeDates = enumerateDatesInclusive(filterStartDate, cappedEnd >= filterStartDate ? cappedEnd : filterEndDate).reverse();
+        const logLookup = {};
+        attendanceData.forEach(a => {
+          if (a.att_date >= filterStartDate && a.att_date <= filterEndDate) {
+            logLookup[`${a.emp_code}_${a.att_date}`] = a;
+          }
+        });
+
         rangeDates.forEach(dStr => {
           const holidayNote = companyHolidays[dStr];
           filteredStaff.forEach(emp => {
             const isAdmin = emp.role === 'admin';
-            if (isAdmin && dStr !== rangeDates[0]) return;
-            const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === dStr);
+            if (isAdmin && !searchQuery) return;
+            const log = logLookup[`${emp.emp_code}_${dStr}`];
             const defaultDesig = emp.role === 'coordinator' ? 'Coordinator' : (isAdmin ? 'Admin' : 'Employee');
             const resolvedStatus = isAdmin ? '-' : ((log && log.status && log.status !== '-') ? log.status : (holidayNote ? 'Holiday' : 'Absent'));
             const resolvedAddress = isAdmin ? '-' : (log ? (log.recorded_address || 'Location Captured') : (holidayNote ? `🎉 Company Holiday: ${holidayNote}` : 'Not Marked Yet'));
@@ -3048,7 +3026,7 @@
               aadhaar_card: getUserAadhaar(emp),
               pan_card: getUserPan(emp),
               status: resolvedStatus,
-              att_time: isAdmin ? '-' : (log ? log.att_time : '-'),
+              att_time: isAdmin ? '-' : (log ? (log.att_time || '-') : '-'),
               punch_out_time: isAdmin ? '-' : (log && log.punch_out_time ? log.punch_out_time : '-'),
               work_duration: durObj.text,
               work_minutes: durObj.minutes,
@@ -3062,7 +3040,7 @@
               punch_out_address: isAdmin ? '-' : (log && log.punch_out_address ? log.punch_out_address : '-'),
               photo_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, false),
               photo_out_resolved: isAdmin ? null : resolveAccessiblePhotoUrl(log, true),
-              marked_by: isAdmin ? '-' : (log ? log.marked_by : '-'),
+              marked_by: isAdmin ? '-' : (log ? (log.marked_by || 'Self') : '-'),
               edited_by: isAdmin ? null : (log ? log.edited_by : null),
               edited_by_role: isAdmin ? null : (log ? log.edited_by_role : null),
               edited_by_code: isAdmin ? null : (log ? log.edited_by_code : null),
@@ -3093,22 +3071,20 @@
     // FIX #5: Always keep ✔ Self (Geo-Photo) when employee punched in/out, and show Edited by + Action + Time
     function formatEditAuditBadge(r) {
       if (!r || r.role === 'admin') return '';
-      const isMuted = r.status === 'Absent' || r.status === 'Leave' || r.status === 'Holiday';
+      const isOverriddenNonPresent = r.status === 'Absent' || r.status === 'Leave' || r.status === 'Holiday';
       const hasGeoOrPhoto = Boolean(
         (r.marked_by && r.marked_by.startsWith('Self')) ||
         r.lat != null ||
         r.photo_resolved != null ||
         r.photo_out_resolved != null ||
         r.photo_base64 != null ||
-        r.photo_url != null ||
-        r.punch_out_photo != null ||
-        r.out_photo_url != null
+        r.photo_url != null
       );
-      const selfBadgeCls = isMuted
-        ? 'mt-1 inline-block bg-slate-100 text-slate-500 border border-slate-300 px-1.5 py-0.5 rounded text-[9.5px] font-bold leading-tight'
-        : 'mt-1 inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded text-[9.5px] font-bold leading-tight';
+      const selfBadgeColor = isOverriddenNonPresent
+        ? 'bg-slate-100 text-slate-500 border-slate-300'
+        : 'bg-emerald-50 text-emerald-800 border-emerald-200';
       const selfBadgeHTML = hasGeoOrPhoto
-        ? `<div class="${selfBadgeCls}">✔ Self (Geo-Photo)</div>`
+        ? `<div class="mt-1 inline-block ${selfBadgeColor} border px-1.5 py-0.5 rounded text-[9.5px] font-bold leading-tight">✔ Self (Geo-Photo)</div>`
         : '';
 
       const editorName = r.edited_by || (r.marked_by && r.marked_by !== '-' && !r.marked_by.startsWith('Self') ? r.marked_by : null);
@@ -3179,10 +3155,16 @@
           : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}">${r.status}</span>`;
 
         const isCoordinatorSelfRow = currentUser.role === 'coordinator' && (r.role === 'coordinator' || r.emp_code === currentUser.emp_code);
+        const isPastDateLocked = isDateLockedForCoordinator(r.att_date);
         const disableActionButtons = isAdminRow || isCoordinatorSelfRow;
-        const isPastDateLockedForCoord = !disableActionButtons && isDateLockedForCoordinator(r.att_date);
+        const isOverriddenNonPresent = r.status === 'Absent' || r.status === 'Leave' || r.status === 'Holiday';
 
-        const canPunchOutOverride = !disableActionButtons && !isPastDateLockedForCoord && r.att_time && r.att_time !== '-' && (!r.punch_out_time || r.punch_out_time === '-');
+        const hasOutRecord = Boolean(
+          (r.punch_out_time && r.punch_out_time !== '-') ||
+          r.photo_out_resolved ||
+          (r.punch_out_address && r.punch_out_address !== '-')
+        );
+        const canPunchOutOverride = !disableActionButtons && !isPastDateLocked && r.att_time && r.att_time !== '-' && !hasOutRecord;
         const punchOutActionBtn = canPunchOutOverride
           ? `<button onclick="manualMarkPunchOut('${r.emp_code}', '${r.att_date}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-1.5 py-1 rounded font-bold text-[10px]" title="Mark Punch Out">Punch Out</button>`
           : '';
@@ -3193,8 +3175,8 @@
 
         const actionCellHTML = disableActionButtons
           ? `<span class="bg-slate-100 text-slate-800 font-bold px-2.5 py-1 rounded-md text-[11px]">-</span>`
-          : isPastDateLockedForCoord
-          ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-300 font-extrabold px-2 py-1 rounded-md text-[10px] select-none" title="Past date attendance is locked after 12:00 AM IST. Contact Admin for changes.">🔒 Locked (Admin Only)</span>`
+          : isPastDateLocked
+          ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 border border-slate-200 font-extrabold px-2 py-1 rounded-md text-[10px]" title="Locked after 12:00 AM IST — Only Admin can edit past dates">🔒 Locked (Admin Only)</span>`
           : `<div class="flex flex-wrap items-center justify-end gap-1">
                <button onclick="manualOverrideStatus('${r.emp_code}', '${r.att_date}', 'Present')" title="Click to mark Present; click again to undo" class="${pActiveRing} text-emerald-700 border border-emerald-200 px-1.5 py-1 rounded font-bold text-[10px] transition">Present</button>
                ${punchOutActionBtn}
@@ -3208,37 +3190,29 @@
           ? `<span class="inline-block bg-purple-100 text-purple-800 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded mr-1">Admin</span>`
           : `<span class="inline-block bg-blue-50 text-blue-700 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded mr-1">Emp</span>`;
 
-        const isGreyedByStatus = !isAdminRow && (r.status === 'Absent' || r.status === 'Leave' || r.status === 'Holiday');
-
         let punchTimingHTML = `<span class="text-slate-400">-</span>`;
-        if (!isAdminRow && ((r.att_time && r.att_time !== '-') || (r.punch_out_time && r.punch_out_time !== '-'))) {
-          const inLineClass = isGreyedByStatus
-            ? 'text-[10.5px] font-bold text-slate-400 leading-tight'
-            : 'text-[10.5px] font-bold text-emerald-700 leading-tight';
-          const outLineClass = isGreyedByStatus
-            ? 'text-[10.5px] font-bold text-slate-400 leading-tight mt-0.5'
-            : 'text-[10.5px] font-bold text-rose-700 leading-tight mt-0.5';
-          const workingClass = isGreyedByStatus
-            ? 'text-[9.5px] font-semibold text-slate-400 leading-tight mt-0.5'
-            : 'text-[9.5px] font-semibold text-amber-600 leading-tight mt-0.5';
-          const missingBadgeClass = isGreyedByStatus
-            ? 'inline-block mt-0.5 bg-slate-100 text-slate-500 border border-slate-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded leading-tight'
-            : 'inline-block mt-0.5 bg-orange-100 text-orange-900 border border-orange-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded leading-tight';
-          const durBadgeClass = isGreyedByStatus
-            ? 'inline-block mt-0.5 bg-slate-100 text-slate-500 border border-slate-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded'
-            : 'inline-block mt-0.5 bg-indigo-100 text-indigo-900 border border-indigo-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded';
-          const iconFilter = isGreyedByStatus ? 'class="grayscale opacity-60"' : '';
+        if (!isAdminRow && ((r.att_time && r.att_time !== '-') || hasOutRecord)) {
+          const inTextColor = isOverriddenNonPresent ? 'text-slate-400' : 'text-emerald-700';
+          const outTextColor = isOverriddenNonPresent ? 'text-slate-400' : 'text-rose-700';
+          const durPillStyle = isOverriddenNonPresent
+            ? 'bg-slate-100 text-slate-400 border-slate-300'
+            : 'bg-indigo-100 text-indigo-900 border-indigo-300';
+          const inDot = isOverriddenNonPresent ? '⚪' : '🟢';
+          const outDot = isOverriddenNonPresent ? '⚪' : '🔴';
 
-          const outBadge = r.punch_out_time && r.punch_out_time !== '-'
-            ? `<div class="${outLineClass}"><span ${iconFilter}>🔴</span> Out: ${r.punch_out_time}</div>`
+          const outTimeDisplay = (r.punch_out_time && r.punch_out_time !== '-')
+            ? r.punch_out_time
+            : (hasOutRecord ? 'Recorded' : null);
+          const outBadge = outTimeDisplay
+            ? `<div class="text-[10.5px] font-bold ${outTextColor} leading-tight mt-0.5">${outDot} Out: ${outTimeDisplay}</div>`
             : (isPunchOutMissing(r)
-                ? `<div class="${missingBadgeClass}"><span ${iconFilter}>⚠️</span> Punch Out Missing</div>`
-                : `<div class="${workingClass}"><span ${iconFilter}>⏳</span> Working (Active)</div>`);
+                ? `<div class="inline-block mt-0.5 bg-orange-100 text-orange-900 border border-orange-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded leading-tight">⚠️ Punch Out Missing</div>`
+                : `<div class="text-[9.5px] font-semibold ${isOverriddenNonPresent ? 'text-slate-400' : 'text-amber-600'} leading-tight mt-0.5">⏳ Working (Active)</div>`);
           const durBadge = r.work_duration && r.work_duration !== '-'
-            ? `<span class="${durBadgeClass}"><span ${iconFilter}>⏱️</span> ${r.work_duration} (${r.work_decimal_hours}h)</span>`
+            ? `<span class="inline-block mt-0.5 ${durPillStyle} border text-[9.5px] font-extrabold px-1.5 py-0.5 rounded">⏱️ ${r.work_duration} (${r.work_decimal_hours}h)</span>`
             : '';
           punchTimingHTML = `
-            <div class="${inLineClass}"><span ${iconFilter}>🟢</span> In: ${r.att_time}</div>
+            <div class="text-[10.5px] font-bold ${inTextColor} leading-tight">${inDot} In: ${r.att_time || '-'}</div>
             ${outBadge}
             ${durBadge}
           `;
@@ -3247,52 +3221,39 @@
         const editAuditHTML = formatEditAuditBadge(r);
 
         let recordedLocationHTML = `<span class="text-slate-400">${r.recorded_address}</span>${editAuditHTML}`;
-        if (!isAdminRow && r.lat != null && r.lng != null) {
+        if (!isAdminRow && r.lat && r.lng) {
           const mapUrl = `https://www.google.com/maps?q=${r.lat},${r.lng}`;
-          const outLat = Number(r.punch_out_lat ?? r.lat);
-          const outLng = Number(r.punch_out_lng ?? r.lng);
+          const outLat = Number(r.punch_out_lat || r.lat);
+          const outLng = Number(r.punch_out_lng || r.lng);
           const outMapUrl = `https://www.google.com/maps?q=${outLat},${outLng}`;
-          const hasOutRecord = Boolean(
-            (r.punch_out_address && r.punch_out_address !== '-') ||
-            (r.punch_out_time && r.punch_out_time !== '-') ||
-            r.photo_out_resolved ||
-            r.punch_out_lat != null
-          );
           const outAddrText = (r.punch_out_address && r.punch_out_address !== '-')
             ? r.punch_out_address
             : r.recorded_address;
-
-          const inLocTextClass = isGreyedByStatus
-            ? 'font-bold text-slate-400 leading-tight break-words'
-            : 'font-bold text-slate-800 leading-tight break-words';
-          const outLocTextClass = isGreyedByStatus
-            ? 'font-bold text-slate-400 leading-tight break-words'
-            : 'font-bold text-rose-800 leading-tight break-words';
-          const mapLinkClass = isGreyedByStatus
-            ? 'inline-block text-[10px] text-slate-400 hover:text-slate-600 hover:underline font-extrabold mt-0.5'
-            : 'inline-block text-[10px] text-blue-600 hover:underline font-extrabold mt-0.5';
-          const locIconFilter = isGreyedByStatus ? 'class="grayscale opacity-60"' : '';
+          const locInColor = isOverriddenNonPresent ? 'text-slate-400' : 'text-slate-800';
+          const locOutColor = isOverriddenNonPresent ? 'text-slate-400' : 'text-rose-800';
+          const mapLinkColor = isOverriddenNonPresent ? 'text-slate-400 hover:text-slate-600' : 'text-blue-600';
+          const inDot = isOverriddenNonPresent ? '⚪' : '🟢';
+          const outDot = isOverriddenNonPresent ? '⚪' : '🔴';
 
           const outLocLine = hasOutRecord
             ? `<div class="mt-1 pt-1 border-t border-slate-100">
-                 <div class="${outLocTextClass}"><span ${locIconFilter}>🔴</span> Out: ${outAddrText}</div>
-                 <a href="${outMapUrl}" target="_blank" class="${mapLinkClass}">
-                   <span ${locIconFilter}>📍</span> Google Maps (${outLat.toFixed(4)}, ${outLng.toFixed(4)}) ↗
+                 <div class="font-bold ${locOutColor} leading-tight break-words">${outDot} Out: ${outAddrText}</div>
+                 <a href="${outMapUrl}" target="_blank" class="inline-block text-[10px] ${mapLinkColor} hover:underline font-extrabold mt-0.5">
+                   📍 Google Maps (${outLat.toFixed(4)}, ${outLng.toFixed(4)}) ↗
                  </a>
                </div>`
             : '';
           recordedLocationHTML = `
-            <div class="${inLocTextClass}"><span ${locIconFilter}>🟢</span> In: ${r.recorded_address}</div>
-            <a href="${mapUrl}" target="_blank" class="${mapLinkClass}">
-              <span ${locIconFilter}>📍</span> Google Maps (${Number(r.lat).toFixed(4)}, ${Number(r.lng).toFixed(4)}) ↗
+            <div class="font-bold ${locInColor} leading-tight break-words">${inDot} In: ${r.recorded_address}</div>
+            <a href="${mapUrl}" target="_blank" class="inline-block text-[10px] ${mapLinkColor} hover:underline font-extrabold mt-0.5">
+              📍 Google Maps (${Number(r.lat).toFixed(4)}, ${Number(r.lng).toFixed(4)}) ↗
             </a>
             ${outLocLine}
             ${editAuditHTML}
           `;
         } else if (!isAdminRow && r.recorded_address && r.recorded_address !== 'Not Marked Yet') {
-          const textCls = isGreyedByStatus ? 'font-semibold text-slate-400 leading-tight break-words' : 'font-semibold text-slate-700 leading-tight break-words';
           recordedLocationHTML = `
-            <div class="${textCls}">${r.recorded_address}</div>
+            <div class="font-semibold ${isOverriddenNonPresent ? 'text-slate-400' : 'text-slate-700'} leading-tight break-words">${r.recorded_address}</div>
             ${editAuditHTML}
           `;
         }
@@ -3301,18 +3262,17 @@
         if (isAdminRow) {
           photoCell = `<span class="text-slate-400">-</span>`;
         } else if (r.photo_resolved || r.photo_out_resolved) {
-          const inBtnClass = isGreyedByStatus
-            ? 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-300 px-2 py-0.5 rounded-lg font-bold text-[10px]'
-            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-lg font-bold text-[10px]';
-          const outBtnClass = isGreyedByStatus
-            ? 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-300 px-2 py-0.5 rounded-lg font-bold text-[10px]'
-            : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-lg font-bold text-[10px]';
-          const camIconFilter = isGreyedByStatus ? 'class="grayscale opacity-60"' : '';
+          const inBtnStyle = isOverriddenNonPresent
+            ? 'bg-slate-100 hover:bg-slate-200 text-slate-500 border-slate-300 grayscale opacity-60'
+            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300';
+          const outBtnStyle = isOverriddenNonPresent
+            ? 'bg-slate-100 hover:bg-slate-200 text-slate-500 border-slate-300 grayscale opacity-60'
+            : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300';
           const inBtn = r.photo_resolved
-            ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}', false)" class="${inBtnClass}"><span ${camIconFilter}>📸</span> In</button>`
+            ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}', false)" class="${inBtnStyle} border px-2 py-0.5 rounded-lg font-bold text-[10px]">📸 In</button>`
             : '';
           const outBtn = r.photo_out_resolved
-            ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}', true)" class="${outBtnClass}"><span ${camIconFilter}>📸</span> Out</button>`
+            ? `<button onclick="viewPhoto('${r.emp_code}', '${r.att_date}', true)" class="${outBtnStyle} border px-2 py-0.5 rounded-lg font-bold text-[10px]">📸 Out</button>`
             : '';
           photoCell = `<div class="flex flex-wrap items-center gap-1">${inBtn}${outBtn}</div>`;
         }
@@ -3384,10 +3344,10 @@
           const cappedEnd = filterEndDate > todayIST ? todayIST : filterEndDate;
           const rangeDates = enumerateDatesInclusive(filterStartDate, cappedEnd >= filterStartDate ? cappedEnd : filterEndDate);
           rangeDates.forEach(dStr => {
-            const isHol = Boolean(companyHolidays[dStr]);
+            const holNote = companyHolidays[dStr];
             zoneEmps.forEach(emp => {
               const log = attendanceData.find(x => x.emp_code === emp.emp_code && x.att_date === dStr);
-              const st = (log && log.status && log.status !== '-') ? log.status : (isHol ? 'Holiday' : 'Absent');
+              const st = (log && log.status && log.status !== '-') ? log.status : (holNote ? 'Holiday' : 'Absent');
               if (st === 'Present') p++;
               else if (st === 'Leave' || st === 'Holiday') l++;
               else if (st === 'Absent') a++;
@@ -3601,18 +3561,8 @@
         (log.marked_by && log.marked_by.startsWith('Self')) ||
         log.lat != null ||
         log.photo_base64 != null ||
-        log.photo_url != null ||
-        log.punch_out_photo != null ||
-        log.out_photo_url != null ||
-        (log.att_time && log.att_time !== '-')
+        log.photo_url != null
       );
-    }
-
-    // Coordinator Past-Date Lock Helper: returns true when logged in as Coordinator and targetDate is before Today (12:00 AM IST cutoff)
-    function isDateLockedForCoordinator(dateStr) {
-      if (!currentUser || currentUser.role !== 'coordinator') return false;
-      if (!dateStr) return false;
-      return dateStr < getTodayISTDateStr();
     }
 
     // FIX #5: Preserves Punch In/Out, GPS, Photos & Self badge when overriding a self-punched record; logs full Edit Audit
@@ -3623,7 +3573,7 @@
         return showToastNotice("Coordinators can only mark their own attendance via the Punch In / Out camera screen.");
       }
       if (isDateLockedForCoordinator(targetDate)) {
-        return showToastNotice("🔒 Past attendance is locked after 12:00 AM IST. Please contact Admin for any changes.");
+        return showToastNotice("🔒 Past-date attendance is locked after 12:00 AM IST. Only Admin can edit previous days.");
       }
 
       const key = `${empCode}_${targetDate}`;
@@ -3638,8 +3588,8 @@
       const isSelfPunchRecord = hasEmployeeSelfPunch(existingLog);
 
       // CHECK IF THIS IS A REPEAT CLICK / DOUBLE-CLICK ON THE SAME STATUS OPTION TO UNDO/REMOVE
-      if (existingLog && existingLog.status === newStatus && (existingLog._isManualFromBlank || existingLog._isManualOverride || existingLog.edited_by || !isSelfPunchRecord)) {
-        // CASE 1: Originally Blank/Unmarked (Employee did NOT punch in) -> Remove completely with no mentioning
+      if (existingLog && existingLog.status === newStatus && (existingLog._isManualFromBlank || existingLog._isManualOverride || !isSelfPunchRecord)) {
+        // CASE 1: Originally Blank/Unmarked (Employee did NOT punch in) -> Remove manual mark (reverts to default Absent)
         if (existingLog._isManualFromBlank || !isSelfPunchRecord) {
           manualUndoCooldownMap[key] = nowMs;
           attendanceData = attendanceData.filter(a => !(a.emp_code === empCode && a.att_date === targetDate));
@@ -3655,7 +3605,7 @@
           return;
         }
 
-        // CASE 2: Employee DID Punch In -> Same-day undo until 12:00 AM IST for Coordinator (and anytime for Admin) restores exact original punch-in, punch-out, photos, location & Self badge
+        // CASE 2: Employee DID Punch In -> Undo restores exact original punch-in, punch-out, photos, location & Self badge (Available all day until 12:00 AM IST for Coordinator, anytime for Admin)
         if (isSelfPunchRecord) {
           manualUndoCooldownMap[key] = nowMs;
           const snap = existingLog._preEditSnapshot || {};
@@ -3665,11 +3615,11 @@
             zone_name: emp.zone_name,
             att_date: targetDate,
             att_time: snap.att_time || existingLog.att_time || '-',
-            punch_in_ts: snap.punch_in_ts ?? existingLog.punch_in_ts ?? null,
+            punch_in_ts: snap.punch_in_ts || existingLog.punch_in_ts || null,
             punch_out_time: snap.punch_out_time || existingLog.punch_out_time || '-',
-            punch_out_ts: snap.punch_out_ts ?? existingLog.punch_out_ts ?? null,
+            punch_out_ts: snap.punch_out_ts || existingLog.punch_out_ts || null,
             work_duration: snap.work_duration || existingLog.work_duration || '-',
-            work_minutes: snap.work_minutes ?? existingLog.work_minutes ?? 0,
+            work_minutes: snap.work_minutes || existingLog.work_minutes || 0,
             status: snap.status || 'Present',
             lat: snap.lat ?? existingLog.lat ?? null,
             lng: snap.lng ?? existingLog.lng ?? null,
@@ -3804,10 +3754,7 @@
         renderProfileCalendar();
       }
       if (isSelfPunchRecord) {
-        const undoHint = currentUser.role === 'coordinator'
-          ? `(Click ${newStatus} again before 12:00 AM IST to undo)`
-          : `(Click ${newStatus} again to undo)`;
-        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} — Punch In/Out, Location & Photo preserved ${undoHint}.`);
+        showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} — Punch In/Out, Location & Photo preserved (Click ${newStatus} again to undo).`);
       } else {
         showToastNotice(`✔ Marked ${newStatus} for ${emp.full_name} by ${currentUser.full_name} at ${nowTime}.`);
       }
@@ -3822,7 +3769,7 @@
         return showToastNotice("Coordinators can only mark their own Punch Out via the camera screen.");
       }
       if (isDateLockedForCoordinator(targetDate)) {
-        return showToastNotice("🔒 Past attendance is locked after 12:00 AM IST. Please contact Admin for any changes.");
+        return showToastNotice("🔒 Past-date attendance is locked after 12:00 AM IST. Only Admin can edit previous days.");
       }
 
       const existingLog = attendanceData.find(a => a.emp_code === empCode && a.att_date === targetDate);
@@ -3859,7 +3806,7 @@
       if (!empCode || !targetDate || !rawTime24) return;
       if (isDateLockedForCoordinator(targetDate)) {
         closeManualPunchOutModal();
-        return showToastNotice("🔒 Past attendance is locked after 12:00 AM IST. Please contact Admin for any changes.");
+        return showToastNotice("🔒 Past-date attendance is locked after 12:00 AM IST. Only Admin can edit previous days.");
       }
 
       const emp = usersData.find(u => u.emp_code === empCode);
@@ -3964,38 +3911,28 @@
       }
       const dates = enumerateDatesInclusive(sVal, eVal);
       const count = dates.length || 1;
-      const hasLockedPastDate = dates.some(d => isDateLockedForCoordinator(d));
-
       if (badgeEl) {
-        if (hasLockedPastDate) {
-          badgeEl.textContent = `🔒 Past Date Locked (Admin Only)`;
-          badgeEl.className = 'text-[9.5px] font-extrabold bg-slate-200 text-slate-700 border border-slate-300 px-2 py-0.5 rounded-md shrink-0';
-        } else {
-          badgeEl.textContent = count === 1
-            ? `1 Day (${formatDateDDMMYYYY(sVal)})`
-            : `${count} Days (${formatDateDDMMYYYY(sVal)} → ${formatDateDDMMYYYY(eVal)})`;
-          badgeEl.className = 'text-[9.5px] font-extrabold bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-md shrink-0';
-        }
+        badgeEl.textContent = count === 1
+          ? `1 Day (${formatDateDDMMYYYY(sVal)})`
+          : `${count} Days (${formatDateDDMMYYYY(sVal)} → ${formatDateDDMMYYYY(eVal)})`;
       }
 
-      if (applyBtn && applyText && applyIcon) {
-        if (hasLockedPastDate) {
-          applyBtn.className = 'flex-1 bg-slate-200 text-slate-500 border border-slate-300 font-extrabold py-1.5 px-3 rounded-lg text-[11px] transition flex items-center justify-center gap-1 cursor-not-allowed';
+      const rangeLocked = isDateLockedForCoordinator(sVal) || isDateLockedForCoordinator(eVal);
+      if (applyBtn && applyIcon && applyText) {
+        if (rangeLocked) {
           applyIcon.textContent = '🔒';
           applyText.textContent = 'Locked (Admin Only)';
+          applyBtn.className = 'flex-1 bg-slate-200 text-slate-500 border border-slate-300 font-extrabold py-1.5 px-3 rounded-lg text-[11px] cursor-not-allowed flex items-center justify-center gap-1';
         } else {
-          applyBtn.className = 'flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-1.5 px-3 rounded-lg text-[11px] shadow-sm transition flex items-center justify-center gap-1';
           applyIcon.textContent = '✔';
           applyText.textContent = 'Apply Leave (From–To)';
+          applyBtn.className = 'flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-1.5 px-3 rounded-lg text-[11px] shadow-sm transition flex items-center justify-center gap-1';
         }
       }
-
       if (clearBtn) {
-        if (hasLockedPastDate) {
-          clearBtn.className = 'shrink-0 bg-slate-100 text-slate-400 border border-slate-300 font-extrabold py-1.5 px-2.5 rounded-lg text-[11px] transition cursor-not-allowed';
-        } else {
-          clearBtn.className = 'shrink-0 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-extrabold py-1.5 px-2.5 rounded-lg text-[11px] transition';
-        }
+        clearBtn.className = rangeLocked
+          ? 'shrink-0 bg-slate-100 text-slate-400 border border-slate-200 font-extrabold py-1.5 px-2.5 rounded-lg text-[11px] cursor-not-allowed'
+          : 'shrink-0 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-extrabold py-1.5 px-2.5 rounded-lg text-[11px] transition';
       }
     }
 
@@ -4045,9 +3982,11 @@
 
       const log = attendanceData.find(a => a.emp_code === activeProfileEmpCode && a.att_date === targetDate);
       const compHoliday = companyHolidays[targetDate];
+      const todayIST = getTodayISTDateStr();
+      const isSunday = new Date(targetDate + 'T00:00:00Z').getUTCDay() === 0;
       const effectiveStatus = (log && log.status && log.status !== '-')
         ? log.status
-        : (compHoliday ? 'Holiday' : 'Absent');
+        : (compHoliday ? 'Holiday' : (!isSunday && targetDate <= todayIST ? 'Absent' : '-'));
 
       if (pillEl) {
         if (effectiveStatus === 'Present') {
@@ -4075,11 +4014,11 @@
         return uLog && uLog.status === 'Holiday';
       });
 
-      const isSelectedDateLockedForCoord = isDateLockedForCoordinator(targetDate);
+      const isLockedPast = isDateLockedForCoordinator(targetDate);
       if (holText && holBtn) {
-        if (isSelectedDateLockedForCoord) {
-          holText.textContent = `🔒 Past Holiday (Admin Only)`;
-          holBtn.className = 'bg-slate-100 text-slate-500 border border-slate-300 font-extrabold py-1.5 px-2 rounded-lg text-[10.5px] transition flex items-center justify-center gap-1 cursor-not-allowed';
+        if (isLockedPast) {
+          holText.textContent = `🔒 Locked (Admin Only)`;
+          holBtn.className = 'bg-slate-100 text-slate-500 border border-slate-200 font-extrabold py-1.5 px-2 rounded-lg text-[10.5px] cursor-not-allowed flex items-center justify-center gap-1';
         } else {
           holText.textContent = allAreaMarkedHoliday
             ? `Undo All ${areaName} Holiday`
@@ -4107,7 +4046,7 @@
 
       const targetDate = selectedSideCalDate || getTodayISTDateStr();
       if (isDateLockedForCoordinator(targetDate)) {
-        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — only Admin can change or undo past Staff Holidays.");
+        return showToastNotice("🔒 Past-date attendance is locked after 12:00 AM IST. Only Admin can edit previous days.");
       }
       const areaName = emp.zone_name;
       const areaStaff = usersData.filter(u =>
@@ -4126,27 +4065,35 @@
 
       if (allAreaMarkedHoliday) {
         const staffCodes = new Set(areaStaff.map(u => u.emp_code));
-        const restoredList = [];
-        const deleteCodeList = [];
-        attendanceData = attendanceData.filter(a => {
+        const restoredToSync = [];
+        const codesToDelete = [];
+        attendanceData = attendanceData.reduce((acc, a) => {
           if (staffCodes.has(a.emp_code) && a.att_date === targetDate && a.status === 'Holiday') {
             if (hasEmployeeSelfPunch(a)) {
-              a.status = 'Present';
-              a.reason_note = null;
-              a.edited_by = null;
-              a.edited_by_role = null;
-              a.edited_by_code = null;
-              a.edited_action = null;
-              a.edited_at = null;
-              a._isManualOverride = false;
-              restoredList.push(a);
-              return true;
+              const snap = a._preEditSnapshot || {};
+              const restored = {
+                ...a,
+                status: snap.status || 'Present',
+                reason_note: null,
+                edited_by: snap.edited_by || null,
+                edited_by_role: snap.edited_by_role || null,
+                edited_by_code: snap.edited_by_code || null,
+                edited_action: snap.edited_action || null,
+                edited_at: snap.edited_at || null
+              };
+              delete restored._isManualOverride;
+              delete restored._manualOverrideStatus;
+              delete restored._manualOverrideTs;
+              acc.push(restored);
+              restoredToSync.push(restored);
+            } else {
+              codesToDelete.push(a.emp_code);
             }
-            deleteCodeList.push(a.emp_code);
-            return false;
+          } else {
+            acc.push(a);
           }
-          return true;
-        });
+          return acc;
+        }, []);
         saveLocalFallback();
         updateSelectedDateActionPanel();
         renderEmployeeProfileHistory();
@@ -4155,8 +4102,8 @@
 
         if (isSupabaseConfigured) {
           await Promise.all([
-            ...deleteCodeList.map(code => supabaseClient.from('attendance_logs').delete().eq('emp_code', code).eq('att_date', targetDate)),
-            ...restoredList.map(r => syncAttendanceRecordToSupabase(r))
+            ...codesToDelete.map(code => supabaseClient.from('attendance_logs').delete().eq('emp_code', code).eq('att_date', targetDate)),
+            ...restoredToSync.map(r => syncAttendanceRecordToSupabase(r))
           ]);
         }
         showToastNotice(`↩ Removed ${areaName} Staff Holiday on ${formatDateDDMMYYYY(targetDate)} for ${areaStaff.length} staff.`);
@@ -4226,8 +4173,8 @@
       if (!dates.length) {
         return showToastNotice("Please select a valid Leave From and Leave To date range.");
       }
-      if (dates.some(d => isDateLockedForCoordinator(d))) {
-        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — please select today or future dates, or contact Admin.");
+      if (dates.some(dStr => isDateLockedForCoordinator(dStr))) {
+        return showToastNotice("🔒 Past-date attendance is locked after 12:00 AM IST. Coordinators can only schedule leave for today or future dates.");
       }
 
       const customReason = (document.getElementById('prof-leave-reason')?.value || '').trim();
@@ -4296,32 +4243,40 @@
       const endD = document.getElementById('prof-leave-end')?.value || startD;
       const dates = enumerateDatesInclusive(startD, endD);
       if (!dates.length) return;
-      if (dates.some(d => isDateLockedForCoordinator(d))) {
-        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — only Admin can clear or alter past Leave records.");
+      if (dates.some(dStr => isDateLockedForCoordinator(dStr))) {
+        return showToastNotice("🔒 Past-date attendance is locked after 12:00 AM IST. Only Admin can clear leave on past dates.");
       }
 
       const dateSet = new Set(dates);
-      const recordsToRestore = [];
+      const restoredToSync = [];
       const datesToDelete = [];
-      attendanceData = attendanceData.filter(a => {
+      attendanceData = attendanceData.reduce((acc, a) => {
         if (a.emp_code === emp.emp_code && dateSet.has(a.att_date) && a.status === 'Leave') {
           if (hasEmployeeSelfPunch(a)) {
-            a.status = 'Present';
-            a.reason_note = null;
-            a.edited_by = null;
-            a.edited_by_role = null;
-            a.edited_by_code = null;
-            a.edited_action = null;
-            a.edited_at = null;
-            a._isManualOverride = false;
-            recordsToRestore.push(a);
-            return true;
+            const snap = a._preEditSnapshot || {};
+            const restored = {
+              ...a,
+              status: snap.status || 'Present',
+              reason_note: null,
+              edited_by: snap.edited_by || null,
+              edited_by_role: snap.edited_by_role || null,
+              edited_by_code: snap.edited_by_code || null,
+              edited_action: snap.edited_action || null,
+              edited_at: snap.edited_at || null
+            };
+            delete restored._isManualOverride;
+            delete restored._manualOverrideStatus;
+            delete restored._manualOverrideTs;
+            acc.push(restored);
+            restoredToSync.push(restored);
+          } else {
+            datesToDelete.push(a.att_date);
           }
-          datesToDelete.push(a.att_date);
-          return false;
+        } else {
+          acc.push(a);
         }
-        return true;
-      });
+        return acc;
+      }, []);
       const reasonInput = document.getElementById('prof-leave-reason');
       if (reasonInput) reasonInput.value = '';
 
@@ -4334,7 +4289,7 @@
       if (isSupabaseConfigured) {
         await Promise.all([
           ...datesToDelete.map(dStr => supabaseClient.from('attendance_logs').delete().eq('emp_code', emp.emp_code).eq('att_date', dStr)),
-          ...recordsToRestore.map(r => syncAttendanceRecordToSupabase(r))
+          ...restoredToSync.map(r => syncAttendanceRecordToSupabase(r))
         ]);
       }
       showToastNotice(`↩ Cleared scheduled Leave for ${emp.full_name} (${formatDateDDMMYYYY(startD)} → ${formatDateDDMMYYYY(endD)}).`);
@@ -4386,7 +4341,7 @@
         return showToastNotice("You can only mark Staff Holiday for employees in your assigned area.");
       }
       if (isDateLockedForCoordinator(targetDate)) {
-        return showToastNotice("🔒 Past dates are locked after 12:00 AM IST — only Admin can change past Staff Holidays.");
+        return showToastNotice("🔒 Past-date attendance is locked after 12:00 AM IST. Only Admin can edit previous days.");
       }
 
       const existingLog = attendanceData.find(a => a.emp_code === activeProfileEmpCode && a.att_date === targetDate);
@@ -4397,23 +4352,29 @@
           companyHolidays[targetDate] = "";
           delete companyHolidays[targetDate];
         }
-        let restoredLog = null;
-        attendanceData = attendanceData.filter(a => {
-          if (a.emp_code === activeProfileEmpCode && a.att_date === targetDate && a.status === 'Holiday') {
-            if (hasEmployeeSelfPunch(a)) {
-              a.status = 'Present';
-              a.reason_note = null;
-              restoredLog = a;
-              return true;
-            }
-            return false;
+        if (existingLog && hasEmployeeSelfPunch(existingLog)) {
+          const snap = existingLog._preEditSnapshot || {};
+          const restored = {
+            ...existingLog,
+            status: snap.status || 'Present',
+            reason_note: null,
+            edited_by: snap.edited_by || null,
+            edited_by_role: snap.edited_by_role || null,
+            edited_by_code: snap.edited_by_code || null,
+            edited_action: snap.edited_action || null,
+            edited_at: snap.edited_at || null
+          };
+          delete restored._isManualOverride;
+          delete restored._manualOverrideStatus;
+          delete restored._manualOverrideTs;
+          attendanceData = attendanceData.filter(a => !(a.emp_code === activeProfileEmpCode && a.att_date === targetDate));
+          attendanceData.unshift(restored);
+          if (isSupabaseConfigured) {
+            await syncAttendanceRecordToSupabase(restored);
           }
-          return true;
-        });
-        if (isSupabaseConfigured) {
-          if (restoredLog) {
-            await syncAttendanceRecordToSupabase(restoredLog);
-          } else {
+        } else {
+          attendanceData = attendanceData.filter(a => !(a.emp_code === activeProfileEmpCode && a.att_date === targetDate && a.status === 'Holiday'));
+          if (isSupabaseConfigured) {
             await supabaseClient.from('attendance_logs').delete().eq('emp_code', activeProfileEmpCode).eq('att_date', targetDate);
           }
         }
@@ -4471,14 +4432,7 @@
       if (profCalMonth < 0) {
         profCalMonth = 11;
         profCalYear -= 1;
-      
-      if (currentProfileEmpCode) {
-        const mStart = `${profileCalYear}-${String(profileCalMonth + 1).padStart(2, '0')}-01`;
-        const mDays = new Date(profileCalYear, profileCalMonth + 1, 0).getDate();
-        const mEnd = `${profileCalYear}-${String(profileCalMonth + 1).padStart(2, '0')}-${String(mDays).padStart(2, '0')}`;
-        fetchAttendanceLogsForRange(mStart, mEnd, currentProfileEmpCode);
-      }
-    } else if (profCalMonth > 11) {
+      } else if (profCalMonth > 11) {
         profCalMonth = 0;
         profCalYear += 1;
       }
@@ -4538,15 +4492,13 @@
           monthGazetteItems.push({ dateStr, name: compHoliday });
         }
 
-        const effectiveStatus = (log && log.status && log.status !== '-')
-          ? log.status
-          : (compHoliday ? 'Holiday' : (!isSunday && dateStr <= todayIST ? 'Absent' : null));
+        const effectiveStatus = (log && log.status && log.status !== '-') ? log.status : (compHoliday ? 'Holiday' : (!isSunday && dateStr <= todayIST ? 'Absent' : null));
 
         const dispDate = formatDateDDMMYYYY(dateStr);
         let bgHex = '#ffffff';
         let borderStyle = 'border-slate-200 text-slate-700';
         let shortCode = '';
-        let titleTip = `${dispDate}${isSunday ? ' (Sunday)' : ''}: Absent (Default)`;
+        let titleTip = `${dispDate}${isSunday ? ' (Sunday)' : ''}: Not Marked`;
 
         if (isSunday && !effectiveStatus) {
           bgHex = sectionColors.Sunday || DEFAULT_SECTION_COLORS.Sunday;
@@ -4655,10 +4607,30 @@
             reason_note: companyHolidays[gDate],
             recorded_address: `🏛️ Gazette Holiday: ${companyHolidays[gDate]}`
           });
+          loggedDates.add(gDate);
         }
       });
 
-      const empHistory = [...rawEmpLogs, ...gazetteVirtualLogs]
+      const todayIST = getTodayISTDateStr();
+      const cappedEnd = endD > todayIST ? todayIST : endD;
+      const absentVirtualLogs = [];
+      if (startD && cappedEnd && startD <= cappedEnd) {
+        enumerateDatesInclusive(startD, cappedEnd).forEach(dStr => {
+          const isSun = new Date(dStr + 'T00:00:00Z').getUTCDay() === 0;
+          if (!isSun && !loggedDates.has(dStr) && !companyHolidays[dStr]) {
+            absentVirtualLogs.push({
+              emp_code: activeProfileEmpCode,
+              att_date: dStr,
+              att_time: '-',
+              punch_out_time: '-',
+              status: 'Absent',
+              recorded_address: 'Not Marked Yet'
+            });
+          }
+        });
+      }
+
+      const empHistory = [...rawEmpLogs, ...gazetteVirtualLogs, ...absentVirtualLogs]
         .sort((a, b) => b.att_date.localeCompare(a.att_date));
 
       let p = 0, a = 0, l = 0, h = 0, totalPeriodMinutes = 0;
@@ -4668,6 +4640,7 @@
         else if (log.status === 'Holiday') h++;
         else if (log.status === 'Absent') a++;
 
+        const isMutedRow = log.status === 'Absent' || log.status === 'Leave' || log.status === 'Holiday';
         const durInfo = computeWorkDurationInfo(log);
         totalPeriodMinutes += (durInfo.minutes || 0);
 
@@ -4679,60 +4652,52 @@
           ? 'bg-purple-100 text-purple-800 border-purple-300'
           : 'bg-rose-100 text-rose-800 border-rose-300';
 
-        const isMutedRow = log.status === 'Absent' || log.status === 'Leave' || log.status === 'Holiday';
-        const iconGray = isMutedRow ? 'class="grayscale opacity-60"' : '';
-
         const inImgUrl = resolveAccessiblePhotoUrl(log, false);
         const outImgUrl = resolveAccessiblePhotoUrl(log, true);
         let photoBtn = `-`;
         if (inImgUrl || outImgUrl) {
-          const inBtnCls = isMutedRow ? 'text-slate-400 hover:text-slate-600 font-bold hover:underline mr-1' : 'text-emerald-700 font-bold hover:underline mr-1';
-          const outBtnCls = isMutedRow ? 'text-slate-400 hover:text-slate-600 font-bold hover:underline' : 'text-rose-700 font-bold hover:underline';
-          const b1 = inImgUrl ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}', false)" class="${inBtnCls}"><span ${iconGray}>📸</span>In</button>` : '';
-          const b2 = outImgUrl ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}', true)" class="${outBtnCls}"><span ${iconGray}>📸</span>Out</button>` : '';
+          const inBtnColor = isMutedRow ? 'text-slate-400 grayscale opacity-60' : 'text-emerald-700';
+          const outBtnColor = isMutedRow ? 'text-slate-400 grayscale opacity-60' : 'text-rose-700';
+          const b1 = inImgUrl ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}', false)" class="${inBtnColor} font-bold hover:underline mr-1">📸In</button>` : '';
+          const b2 = outImgUrl ? `<button onclick="viewPhoto('${log.emp_code}', '${log.att_date}', true)" class="${outBtnColor} font-bold hover:underline">📸Out</button>` : '';
           photoBtn = `${b1}${b2}`;
         }
 
         const editAuditLine = formatEditAuditBadge(log);
         let displayReasonOrLoc = `<span class="${isMutedRow ? 'text-slate-400' : ''}">${log.recorded_address || 'Captured'}</span>${editAuditLine}`;
-        if (log.lat != null && log.lng != null) {
+        if (log.lat && log.lng) {
           const inMapUrl = `https://www.google.com/maps?q=${log.lat},${log.lng}`;
-          const hasOut = Boolean(
-            (log.punch_out_address && log.punch_out_address !== '-') ||
-            (log.punch_out_time && log.punch_out_time !== '-') ||
-            outImgUrl ||
-            log.punch_out_lat != null
-          );
-          const oLat = Number(log.punch_out_lat ?? log.lat);
-          const oLng = Number(log.punch_out_lng ?? log.lng);
+          const hasOut = Boolean((log.punch_out_address && log.punch_out_address !== '-') || (log.punch_out_time && log.punch_out_time !== '-') || outImgUrl);
+          const oLat = Number(log.punch_out_lat || log.lat);
+          const oLng = Number(log.punch_out_lng || log.lng);
           const outMapUrl = `https://www.google.com/maps?q=${oLat},${oLng}`;
           const oAddr = (log.punch_out_address && log.punch_out_address !== '-') ? log.punch_out_address : (log.recorded_address || 'Captured');
-          const inLocCls = isMutedRow ? 'font-semibold text-slate-400' : 'font-semibold text-slate-800';
-          const outLocCls = isMutedRow ? 'font-semibold text-slate-400 mt-1' : 'font-semibold text-rose-800 mt-1';
-          const mapCls = isMutedRow
-            ? 'inline-block text-[10px] text-slate-400 hover:text-slate-600 hover:underline font-extrabold'
-            : 'inline-block text-[10px] text-blue-600 hover:underline font-extrabold';
+          const inLocColor = isMutedRow ? 'text-slate-400' : 'text-slate-800';
+          const outLocColor = isMutedRow ? 'text-slate-400' : 'text-rose-800';
+          const mapColor = isMutedRow ? 'text-slate-400' : 'text-blue-600';
+          const inDot = isMutedRow ? '⚪' : '🟢';
+          const outDot = isMutedRow ? '⚪' : '🔴';
           displayReasonOrLoc = `
-            <div class="${inLocCls}"><span ${iconGray}>🟢</span> In Loc: ${log.recorded_address || 'Captured'}</div>
-            <a href="${inMapUrl}" target="_blank" onclick="event.stopPropagation()" class="${mapCls}"><span ${iconGray}>📍</span> Open in Google Maps (${Number(log.lat).toFixed(4)}, ${Number(log.lng).toFixed(4)}) ↗</a>
+            <div class="font-semibold ${inLocColor}">${inDot} In Loc: ${log.recorded_address || 'Captured'}</div>
+            <a href="${inMapUrl}" target="_blank" onclick="event.stopPropagation()" class="inline-block text-[10px] ${mapColor} hover:underline font-extrabold">📍 Open in Google Maps (${Number(log.lat).toFixed(4)}, ${Number(log.lng).toFixed(4)}) ↗</a>
             ${hasOut ? `
-              <div class="${outLocCls}"><span ${iconGray}>🔴</span> Out Loc: ${oAddr}</div>
-              <a href="${outMapUrl}" target="_blank" onclick="event.stopPropagation()" class="${mapCls}"><span ${iconGray}>📍</span> Open in Google Maps (${oLat.toFixed(4)}, ${oLng.toFixed(4)}) ↗</a>
+              <div class="font-semibold ${outLocColor} mt-1">${outDot} Out Loc: ${oAddr}</div>
+              <a href="${outMapUrl}" target="_blank" onclick="event.stopPropagation()" class="inline-block text-[10px] ${mapColor} hover:underline font-extrabold">📍 Open in Google Maps (${oLat.toFixed(4)}, ${oLng.toFixed(4)}) ↗</a>
             ` : ''}
             ${editAuditLine}
           `;
         }
 
-        const inTimeCellCls = isMutedRow ? 'py-2 px-2 text-slate-400 font-bold' : 'py-2 px-2 text-emerald-700 font-bold';
-        const outTimeCellCls = isMutedRow ? 'py-2 px-2 text-slate-400 font-bold' : 'py-2 px-2 text-rose-700 font-bold';
-        const durCellCls = isMutedRow ? 'py-2 px-2 font-extrabold text-slate-400' : 'py-2 px-2 font-extrabold text-indigo-800';
+        const outTimeCellVal = isPunchOutMissing(log)
+          ? '<span class="inline-block bg-orange-100 text-orange-900 border border-orange-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded">⚠️ Missing</span>'
+          : ((log.punch_out_time && log.punch_out_time !== '-') ? log.punch_out_time : (outImgUrl ? 'Recorded' : '-'));
 
         return `
           <tr onclick="selectProfileCalendarDate('${log.att_date}')" class="hover:bg-slate-50 cursor-pointer">
             <td data-label="Date" class="py-2 px-2 font-mono font-bold md:whitespace-nowrap"><div class="cell-val">${formatDateDDMMYYYY(log.att_date)}</div></td>
-            <td data-label="Punch In" class="${inTimeCellCls}"><div class="cell-val">${log.att_time || '-'}</div></td>
-            <td data-label="Punch Out" class="${outTimeCellCls}"><div class="cell-val">${isPunchOutMissing(log) ? '<span class="inline-block bg-orange-100 text-orange-900 border border-orange-300 text-[9.5px] font-extrabold px-1.5 py-0.5 rounded">⚠️ Missing</span>' : (log.punch_out_time || '-')}</div></td>
-            <td data-label="Duration" class="${durCellCls}"><div class="cell-val">${durInfo.text}</div></td>
+            <td data-label="Punch In" class="py-2 px-2 ${isMutedRow ? 'text-slate-400' : 'text-emerald-700'} font-bold"><div class="cell-val">${log.att_time || '-'}</div></td>
+            <td data-label="Punch Out" class="py-2 px-2 ${isMutedRow ? 'text-slate-400' : 'text-rose-700'} font-bold"><div class="cell-val">${outTimeCellVal}</div></td>
+            <td data-label="Duration" class="py-2 px-2 font-extrabold ${isMutedRow ? 'text-slate-400' : 'text-indigo-800'}"><div class="cell-val">${durInfo.text}</div></td>
             <td data-label="Status" class="py-2 px-2"><div class="cell-val"><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${badgeClass}">${log.status}</span></div></td>
             <td data-label="Location / Audit" class="py-2 px-2 break-words"><div class="cell-val">${displayReasonOrLoc}</div></td>
             <td data-label="Photo" class="py-2 px-2 md:whitespace-nowrap" onclick="event.stopPropagation()"><div class="cell-val">${photoBtn}</div></td>
@@ -4759,8 +4724,8 @@
       document.getElementById('employee-profile-modal').classList.add('hidden');
     }
 
-    function xmlEscape(str) {
-      return String(str ?? '')
+    function xmlEscape(val) {
+      return String(val ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -4779,64 +4744,53 @@
       return name;
     }
 
-    function buildWorksheetXmlAndRels(aoa, colWidths, rowStylesMap, cellStyleFn) {
+    function buildWorksheetXmlAndRels(aoa, colWidths = []) {
       const hyperlinks = [];
-      let colsXml = '<cols>';
-      colWidths.forEach((w, idx) => {
-        colsXml += `<col min="${idx + 1}" max="${idx + 1}" width="${w}" customWidth="1"/>`;
-      });
-      colsXml += '</cols>';
+      const colsXml = colWidths.length
+        ? `<cols>${colWidths.map((w, idx) => `<col min="${idx + 1}" max="${idx + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>`
+        : '';
 
-      let sheetDataXml = '<sheetData>';
-      aoa.forEach((row, rIdx) => {
+      const rowsXml = aoa.map((row, rIdx) => {
         const rowNum = rIdx + 1;
-        const rowHeightAttr = rIdx === 0 ? ' ht="24" customHeight="1"' : ' ht="19" customHeight="1"';
-        sheetDataXml += `<row r="${rowNum}"${rowHeightAttr}>`;
-        row.forEach((cellVal, cIdx) => {
+        const rowHeight = rIdx === 0 ? ` ht="24" customHeight="1"` : ` ht="19" customHeight="1"`;
+        const cellsXml = row.map((cell, cIdx) => {
           const ref = `${excelColName(cIdx + 1)}${rowNum}`;
-          const isObj = cellVal && typeof cellVal === 'object';
-          const rawVal = isObj ? (cellVal.text ?? '') : (cellVal ?? '');
-          const linkUrl = isObj ? cellVal.hyperlink : null;
-          const isNum = typeof rawVal === 'number' && !isNaN(rawVal);
+          const isObj = cell !== null && typeof cell === 'object';
+          const rawVal = isObj ? (cell.v ?? '') : (cell ?? '');
+          const styleIdx = isObj && cell.s !== undefined ? cell.s : (rIdx === 0 ? 1 : 0);
+          const linkTarget = isObj && cell.l ? String(cell.l).trim() : '';
 
-          let styleId = rowStylesMap[rIdx] ?? 0;
-          if (cellStyleFn) {
-            const customS = cellStyleFn(rIdx, cIdx, rawVal, isObj ? cellVal : null);
-            if (customS != null) styleId = customS;
-          }
-          if (linkUrl) {
+          if (linkTarget && /^https?:\/\//i.test(linkTarget)) {
             const rId = `rId${hyperlinks.length + 1}`;
-            hyperlinks.push({ ref, rId, url: linkUrl });
+            hyperlinks.push({ ref, rId, target: linkTarget });
           }
 
-          if (isNum) {
-            sheetDataXml += `<c r="${ref}" s="${styleId}"><v>${rawVal}</v></c>`;
-          } else {
-            sheetDataXml += `<c r="${ref}" s="${styleId}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(rawVal)}</t></is></c>`;
+          if (typeof rawVal === 'number' && Number.isFinite(rawVal)) {
+            return `<c r="${ref}" s="${styleIdx}"><v>${rawVal}</v></c>`;
           }
-        });
-        sheetDataXml += '</row>';
-      });
-      sheetDataXml += '</sheetData>';
+          return `<c r="${ref}" t="inlineStr" s="${styleIdx}"><is><t xml:space="preserve">${xmlEscape(rawVal)}</t></is></c>`;
+        }).join('');
+        return `<row r="${rowNum}"${rowHeight}>${cellsXml}</row>`;
+      }).join('');
 
-      let hyperlinksXml = '';
-      let relsXml = null;
-      if (hyperlinks.length > 0) {
-        hyperlinksXml = '<hyperlinks>' + hyperlinks.map(h => `<hyperlink ref="${h.ref}" r:id="${h.rId}"/>`).join('') + '</hyperlinks>';
-        relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-          `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-          hyperlinks.map(h => `<Relationship Id="${h.rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${xmlEscape(h.url)}" TargetMode="External"/>`).join('') +
-          `</Relationships>`;
-      }
+      const hyperlinksXml = hyperlinks.length
+        ? `<hyperlinks>${hyperlinks.map(h => `<hyperlink ref="${h.ref}" r:id="${h.rId}"/>`).join('')}</hyperlinks>`
+        : '';
 
-      const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-        `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-        `<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>` +
-        colsXml +
-        sheetDataXml +
-        hyperlinksXml +
-        `<pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0" paperSize="9"/>` +
-        `</worksheet>`;
+      const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  ${colsXml}
+  <sheetData>${rowsXml}</sheetData>
+  ${hyperlinksXml}
+</worksheet>`;
+
+      const relsXml = hyperlinks.length
+        ? `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${hyperlinks.map(h => `<Relationship Id="${h.rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${xmlEscape(h.target)}" TargetMode="External"/>`).join('')}
+</Relationships>`
+        : null;
 
       return { sheetXml, relsXml };
     }
@@ -4851,23 +4805,23 @@
         }
         crcTable[n] = c >>> 0;
       }
-      function crc32(bytes) {
+      const crc32 = (bytes) => {
         let c = 0xFFFFFFFF;
         for (let i = 0; i < bytes.length; i++) {
           c = crcTable[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
         }
         return (c ^ 0xFFFFFFFF) >>> 0;
-      }
+      };
 
       const localParts = [];
       const centralParts = [];
       let offset = 0;
 
-      files.forEach(file => {
-        const nameBytes = encoder.encode(file.name);
-        const dataBytes = encoder.encode(file.content);
+      files.forEach(f => {
+        const nameBytes = encoder.encode(f.name);
+        const dataBytes = typeof f.content === 'string' ? encoder.encode(f.content) : f.content;
         const crc = crc32(dataBytes);
-        const size = dataBytes.length;
+        const len = dataBytes.length;
 
         const localHeader = new Uint8Array(30 + nameBytes.length);
         const lv = new DataView(localHeader.buffer);
@@ -4876,10 +4830,10 @@
         lv.setUint16(6, 0, true);
         lv.setUint16(8, 0, true);
         lv.setUint16(10, 0, true);
-        lv.setUint16(12, 0x2100, true);
+        lv.setUint16(12, 0, true);
         lv.setUint32(14, crc, true);
-        lv.setUint32(18, size, true);
-        lv.setUint32(22, size, true);
+        lv.setUint32(18, len, true);
+        lv.setUint32(22, len, true);
         lv.setUint16(26, nameBytes.length, true);
         lv.setUint16(28, 0, true);
         localHeader.set(nameBytes, 30);
@@ -4892,10 +4846,10 @@
         cv.setUint16(8, 0, true);
         cv.setUint16(10, 0, true);
         cv.setUint16(12, 0, true);
-        cv.setUint16(14, 0x2100, true);
+        cv.setUint16(14, 0, true);
         cv.setUint32(16, crc, true);
-        cv.setUint32(20, size, true);
-        cv.setUint32(24, size, true);
+        cv.setUint32(20, len, true);
+        cv.setUint32(24, len, true);
         cv.setUint16(28, nameBytes.length, true);
         cv.setUint16(30, 0, true);
         cv.setUint16(32, 0, true);
@@ -4907,10 +4861,10 @@
 
         localParts.push(localHeader, dataBytes);
         centralParts.push(centralHeader);
-        offset += localHeader.length + size;
+        offset += localHeader.length + len;
       });
 
-      const centralSize = centralParts.reduce((acc, arr) => acc + arr.length, 0);
+      const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
       const eocd = new Uint8Array(22);
       const ev = new DataView(eocd.buffer);
       ev.setUint32(0, 0x06054b50, true);
@@ -4933,7 +4887,7 @@
       if (!rows.length) return showToastNotice("No records found to export. Please select an Area or Role filter first.");
 
       // =========================================================================
-      // SHEET 1: DAILY ATTENDANCE LOG (Previous Excel structure + Location Links)
+      // SHEET 1: DAILY ATTENDANCE LOG (Full Details + Clickable Maps/Photo Links)
       // =========================================================================
       const sheet1Headers = [
         "Date",
@@ -4955,7 +4909,7 @@
         "Marked / Edited By",
         "Punch In Photo Link",
         "Punch Out Photo Link"
-      ];
+      ].map(h => ({ v: h, s: 1 }));
 
       const sheet1AOA = [sheet1Headers];
       let grandTotalMinutes = 0;
@@ -4963,26 +4917,19 @@
       rows.forEach(r => {
         const directPhotoInLink = r.photo_resolved && r.photo_resolved.startsWith('http') ? r.photo_resolved : "";
         const directPhotoOutLink = r.photo_out_resolved && r.photo_out_resolved.startsWith('http') ? r.photo_out_resolved : "";
-        const rawAadhaar = (r.aadhaar_card || 'Not Added').toString();
-        const rawPan = (r.pan_card || 'Not Added').toString();
-
-        const hasInCoords = r.lat != null && r.lng != null;
-        const inMapLink = hasInCoords ? `https://www.google.com/maps?q=${r.lat},${r.lng}` : "";
-
-        const hasOutRecord = Boolean(
-          (r.punch_out_address && r.punch_out_address !== '-') ||
+        const punchInMapLink = (r.lat != null && r.lng != null)
+          ? `https://www.google.com/maps?q=${r.lat},${r.lng}`
+          : "";
+        const hasOutLoc = Boolean(
           (r.punch_out_time && r.punch_out_time !== '-') ||
-          r.photo_out_resolved ||
-          r.punch_out_lat != null
+          (r.punch_out_address && r.punch_out_address !== '-') ||
+          directPhotoOutLink
         );
-        const outLat = Number(r.punch_out_lat ?? r.lat);
-        const outLng = Number(r.punch_out_lng ?? r.lng);
-        const outMapLink = (hasOutRecord && !isNaN(outLat) && !isNaN(outLng) && (r.punch_out_lat != null || hasInCoords))
+        const outLat = r.punch_out_lat ?? r.lat;
+        const outLng = r.punch_out_lng ?? r.lng;
+        const punchOutMapLink = (hasOutLoc && outLat != null && outLng != null)
           ? `https://www.google.com/maps?q=${outLat},${outLng}`
           : "";
-        const outLocText = hasOutRecord
-          ? ((r.punch_out_address && r.punch_out_address !== '-') ? r.punch_out_address : (r.recorded_address || '-'))
-          : '-';
 
         grandTotalMinutes += (Number(r.work_minutes) || 0);
         const resolvedAction = r.edited_action || (r.edited_by && r.status && r.status !== '-' ? `Marked ${r.status}` : '');
@@ -4998,163 +4945,200 @@
         const csvPunchOut = missingOut ? 'Punch Out Missing' : (r.punch_out_time || '-');
         const csvDuration = missingOut ? 'Missing (0.00 hrs)' : (r.work_duration || '-');
 
+        const statusStyle = r.status === 'Present' ? 3
+          : r.status === 'Absent' ? 4
+          : r.status === 'Leave' ? 5
+          : r.status === 'Holiday' ? 6 : 2;
+
         sheet1AOA.push([
-          formatDateDDMMYYYY(r.att_date),
-          r.emp_code || '-',
-          r.full_name || '-',
-          (r.role || '').toUpperCase(),
-          r.designation || '-',
-          r.zone_name || '-',
-          rawAadhaar,
-          rawPan,
-          r.status || '-',
-          r.att_time || '-',
-          csvPunchOut,
-          csvDuration,
-          r.recorded_address || '-',
-          inMapLink ? { text: inMapLink, hyperlink: inMapLink } : '-',
-          outLocText,
-          outMapLink ? { text: outMapLink, hyperlink: outMapLink } : '-',
-          editorCol,
-          directPhotoInLink ? { text: directPhotoInLink, hyperlink: directPhotoInLink } : '-',
-          directPhotoOutLink ? { text: directPhotoOutLink, hyperlink: directPhotoOutLink } : '-'
+          { v: formatDateDDMMYYYY(r.att_date), s: 2 },
+          { v: r.emp_code || '-', s: 2 },
+          { v: r.full_name || '-', s: 0 },
+          { v: (r.role || '').toUpperCase(), s: 2 },
+          { v: r.designation || '-', s: 0 },
+          { v: r.zone_name || '-', s: 2 },
+          { v: r.aadhaar_card || 'Not Added', s: 2 },
+          { v: r.pan_card || 'Not Added', s: 2 },
+          { v: r.status || 'Absent', s: statusStyle },
+          { v: r.att_time || '-', s: 2 },
+          { v: csvPunchOut, s: 2 },
+          { v: csvDuration, s: 2 },
+          { v: r.recorded_address || '-', s: 0 },
+          punchInMapLink ? { v: punchInMapLink, l: punchInMapLink, s: 8 } : { v: '-', s: 2 },
+          { v: r.punch_out_address || '-', s: 0 },
+          punchOutMapLink ? { v: punchOutMapLink, l: punchOutMapLink, s: 8 } : { v: '-', s: 2 },
+          { v: editorCol, s: 0 },
+          directPhotoInLink ? { v: directPhotoInLink, l: directPhotoInLink, s: 8 } : { v: '-', s: 2 },
+          directPhotoOutLink ? { v: directPhotoOutLink, l: directPhotoOutLink, s: 8 } : { v: '-', s: 2 }
         ]);
       });
 
       const totalHrs = Math.floor(grandTotalMinutes / 60);
       const totalMins = grandTotalMinutes % 60;
       sheet1AOA.push([
-        "TOTAL WORKED DURATION",
-        "", "", "", "", "", "", "", "", "", "",
-        `${totalHrs}h ${totalMins}m`,
-        "", "", "", "", "", "", ""
+        { v: "TOTAL WORKED DURATION", s: 9 },
+        { v: "", s: 9 }, { v: "", s: 9 }, { v: "", s: 9 }, { v: "", s: 9 },
+        { v: "", s: 9 }, { v: "", s: 9 }, { v: "", s: 9 }, { v: "", s: 9 },
+        { v: "", s: 9 }, { v: "", s: 9 },
+        { v: `${totalHrs}h ${totalMins}m`, s: 9 },
+        { v: "", s: 9 }, { v: "", s: 9 }, { v: "", s: 9 }, { v: "", s: 9 },
+        { v: "", s: 9 }, { v: "", s: 9 }, { v: "", s: 9 }
       ]);
 
-      const sheet1Widths = [13, 15, 22, 13, 20, 15, 18, 14, 12, 14, 16, 22, 30, 36, 30, 36, 38, 36, 36];
-      const sheet1RowStyles = { 0: 1, [sheet1AOA.length - 1]: 2 };
-      const sheet1CellStyleFn = (rIdx, cIdx, val, obj) => {
-        if (rIdx === 0) return 1;
-        if (rIdx === sheet1AOA.length - 1) return 2;
-        if (obj && obj.hyperlink) return 7;
-        if (cIdx === 8) {
-          if (val === 'Present') return 3;
-          if (val === 'Absent') return 4;
-          if (val === 'Leave') return 5;
-          if (val === 'Holiday') return 6;
-        }
-        return 0;
-      };
+      const sheet1Widths = [13, 15, 22, 12, 18, 15, 17, 14, 12, 13, 16, 18, 34, 38, 34, 38, 42, 42, 42];
 
       // =========================================================================
-      // SHEET 2: MONTHLY 1-30/31 ATTENDANCE SUMMARY (No Payment / Amount Column)
+      // SHEET 2: MONTHLY 1–30/31 SUMMARY MATRIX (Days 1..30/31 + P / A / L / H Totals)
       // =========================================================================
-      const baseMonthStr = (filterStartDate || getTodayISTDateStr()).slice(0, 7);
-      const [mYear, mMonth] = baseMonthStr.split('-').map(n => parseInt(n, 10));
-      ensureAutomatedGazetteHolidaysForYear(mYear);
-      const daysInMonth = new Date(mYear, mMonth, 0).getDate();
-      const monthDates = [];
-      for (let d = 1; d <= daysInMonth; d++) {
-        monthDates.push(`${mYear}-${String(mMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
-      }
+      const baseDate = filterStartDate || getTodayISTDateStr();
+      const [yStr, mStr] = baseDate.split('-');
+      const yearNum = parseInt(yStr, 10) || new Date().getFullYear();
+      const monthNum = parseInt(mStr, 10) || (new Date().getMonth() + 1);
+      const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+      const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthLabel = `${monthNamesShort[monthNum - 1] || ''} ${yearNum}`;
+      const todayIST = getTodayISTDateStr();
 
-      const sheet2Headers = [
+      ensureAutomatedGazetteHolidaysForYear(yearNum);
+
+      const sheet2HeaderTexts = [
         "Employee ID",
         "Full Name",
         "Role",
         "Designation",
         "Project Area",
-        ...monthDates.map(dStr => dStr.slice(8, 10)),
+        "Aadhaar Card",
+        "Pan Card"
+      ];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dow = new Date(Date.UTC(yearNum, monthNum - 1, d)).getUTCDay();
+        const dowName = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][dow];
+        sheet2HeaderTexts.push(`${String(d).padStart(2, '0')} (${dowName})`);
+      }
+      sheet2HeaderTexts.push(
         "Total Present (P)",
         "Total Absent (A)",
         "Total Leave (L)",
         "Total Holiday (H)",
+        "Total Sundays (SUN)",
         "Total Worked Duration"
-      ];
+      );
 
-      const sheet2AOA = [sheet2Headers];
-      const staffForMatrix = (filteredEmployees || []).filter(u => u.role !== 'admin');
+      const sheet2AOA = [sheet2HeaderTexts.map(h => ({ v: h, s: 1 }))];
+
+      // Build list of staff to include in Sheet 2
+      const staffForMatrix = (filteredEmployees && filteredEmployees.length)
+        ? filteredEmployees.filter(u => u.role !== 'admin')
+        : usersData.filter(u => u.status === 'active' && u.role !== 'admin');
+
+      const monthPrefix = `${yearNum}-${String(monthNum).padStart(2, '0')}-`;
+      const monthLogMap = {};
+      attendanceData.forEach(a => {
+        if (a.att_date && a.att_date.startsWith(monthPrefix)) {
+          monthLogMap[`${a.emp_code}_${a.att_date}`] = a;
+        }
+      });
 
       staffForMatrix.forEach(emp => {
-        let pCnt = 0, aCnt = 0, lCnt = 0, hCnt = 0, empMins = 0;
-        const dayCells = monthDates.map(dStr => {
-          const log = attendanceData.find(a => a.emp_code === emp.emp_code && a.att_date === dStr);
-          const holName = companyHolidays[dStr];
-          const st = (log && log.status && log.status !== '-') ? log.status : (holName ? 'Holiday' : 'Absent');
-          if (log) {
-            const dInfo = computeWorkDurationInfo(log);
-            empMins += (dInfo.minutes || 0);
-          }
-          if (st === 'Present') { pCnt++; return 'P'; }
-          if (st === 'Absent') { aCnt++; return 'A'; }
-          if (st === 'Leave') { lCnt++; return 'L'; }
-          if (st === 'Holiday') { hCnt++; return 'H'; }
-          aCnt++;
-          return 'A';
-        });
-
-        const eHrs = Math.floor(empMins / 60);
-        const eRemMins = empMins % 60;
         const defaultDesig = emp.role === 'coordinator' ? 'Coordinator' : 'Employee';
+        const rowCells = [
+          { v: emp.emp_code || '-', s: 2 },
+          { v: emp.full_name || '-', s: 0 },
+          { v: (emp.role || '').toUpperCase(), s: 2 },
+          { v: emp.designation || defaultDesig, s: 0 },
+          { v: emp.zone_name || '-', s: 2 },
+          { v: getUserAadhaar(emp), s: 2 },
+          { v: getUserPan(emp), s: 2 }
+        ];
 
-        sheet2AOA.push([
-          emp.emp_code || '-',
-          emp.full_name || '-',
-          (emp.role || '').toUpperCase(),
-          emp.designation || defaultDesig,
-          emp.zone_name || '-',
-          ...dayCells,
-          pCnt,
-          aCnt,
-          lCnt,
-          hCnt,
-          `${eHrs}h ${eRemMins}m`
-        ]);
+        let pCnt = 0, aCnt = 0, lCnt = 0, hCnt = 0, sunCnt = 0, empMonthMins = 0;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const isSunday = new Date(Date.UTC(yearNum, monthNum - 1, d)).getUTCDay() === 0;
+          const log = monthLogMap[`${emp.emp_code}_${dStr}`];
+          const holNote = companyHolidays[dStr];
+
+          if (log) {
+            const durInfo = computeWorkDurationInfo(log);
+            empMonthMins += (durInfo.minutes || 0);
+          }
+
+          const rawStatus = (log && log.status && log.status !== '-')
+            ? log.status
+            : (holNote ? 'Holiday' : null);
+
+          if (rawStatus === 'Present') {
+            pCnt++;
+            rowCells.push({ v: 'P', s: 3 });
+          } else if (rawStatus === 'Leave') {
+            lCnt++;
+            rowCells.push({ v: 'L', s: 5 });
+          } else if (rawStatus === 'Holiday') {
+            hCnt++;
+            rowCells.push({ v: 'H', s: 6 });
+          } else if (rawStatus === 'Absent') {
+            aCnt++;
+            rowCells.push({ v: 'A', s: 4 });
+          } else if (isSunday) {
+            sunCnt++;
+            rowCells.push({ v: 'SUN', s: 7 });
+          } else if (dStr <= todayIST) {
+            aCnt++;
+            rowCells.push({ v: 'A', s: 4 });
+          } else {
+            rowCells.push({ v: '-', s: 2 });
+          }
+        }
+
+        const empH = Math.floor(empMonthMins / 60);
+        const empM = empMonthMins % 60;
+
+        rowCells.push(
+          { v: pCnt, s: 3 },
+          { v: aCnt, s: 4 },
+          { v: lCnt, s: 5 },
+          { v: hCnt, s: 6 },
+          { v: sunCnt, s: 7 },
+          { v: `${empH}h ${empM}m`, s: 9 }
+        );
+
+        sheet2AOA.push(rowCells);
       });
 
       const sheet2Widths = [
-        15, 22, 13, 20, 15,
-        ...monthDates.map(() => 5.5),
-        16, 16, 15, 16, 20
+        15, 22, 12, 18, 15, 17, 14,
+        ...Array.from({ length: daysInMonth }, () => 8.5),
+        16, 16, 15, 16, 18, 20
       ];
-      const firstDayColIdx = 5;
-      const lastDayColIdx = 5 + monthDates.length - 1;
-      const sheet2CellStyleFn = (rIdx, cIdx, val) => {
-        if (rIdx === 0) return 1;
-        if (cIdx >= firstDayColIdx && cIdx <= lastDayColIdx) {
-          if (val === 'P') return 3;
-          if (val === 'A') return 4;
-          if (val === 'L') return 5;
-          if (val === 'H') return 6;
-          return 8;
-        }
-        if (cIdx > lastDayColIdx) return 2;
-        return 0;
-      };
 
-      const s1 = buildWorksheetXmlAndRels(sheet1AOA, sheet1Widths, sheet1RowStyles, sheet1CellStyleFn);
-      const s2 = buildWorksheetXmlAndRels(sheet2AOA, sheet2Widths, { 0: 1 }, sheet2CellStyleFn);
+      // Build OpenXML parts for 2-Sheet .XLSX Workbook
+      const s1 = buildWorksheetXmlAndRels(sheet1AOA, sheet1Widths);
+      const s2 = buildWorksheetXmlAndRels(sheet2AOA, sheet2Widths);
 
       const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="8">
     <font><sz val="10"/><color rgb="FF1E293B"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
-    <font><b/><sz val="10"/><color rgb="FF0F172A"/><name val="Calibri"/></font>
+    <font><b/><sz val="10.5"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF065F46"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF9F1239"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF92400E"/><name val="Calibri"/></font>
     <font><b/><sz val="10"/><color rgb="FF5B21B6"/><name val="Calibri"/></font>
-    <font><u/><sz val="10"/><color rgb="FF2563EB"/><name val="Calibri"/></font>
+    <font><b/><sz val="9.5"/><color rgb="FF475569"/><name val="Calibri"/></font>
+    <font><u/><sz val="10"/><color rgb="FF1D4ED8"/><name val="Calibri"/></font>
   </fonts>
-  <fills count="8">
+  <fills count="9">
     <fill><patternFill patternType="none"/></fill>
     <fill><patternFill patternType="gray125"/></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A8A"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFF1F5F9"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFD1FAE5"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFFE4E6"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill>
-    <fill><patternFill patternType="solid"><fgColor rgb="FFEDE9FE"/><bgColor indexed="64"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF1E3A8A"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFD1FAE5"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFFE4E6"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEDE9FE"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFE2E8F0"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/></patternFill></fill>
   </fills>
   <borders count="2">
     <border><left/><right/><top/><bottom/><diagonal/></border>
@@ -5169,23 +5153,41 @@
   <cellStyleXfs count="1">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellStyleXfs>
-  <cellXfs count="9">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="5" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="6" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
-    <xf numFmtId="0" fontId="7" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment horizontal="center" vertical="center"/></xf>
+  <cellXfs count="10">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="4" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="5" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="7" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
+    <xf numFmtId="0" fontId="6" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
   </cellXfs>
 </styleSheet>`;
 
-      const zipFiles = [
-        {
-          name: '[Content_Types].xml',
-          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Daily Attendance Log" sheetId="1" r:id="rId1"/>
+    <sheet name="Monthly 1-31 (${xmlEscape(monthLabel)})" sheetId="2" r:id="rId2"/>
+  </sheets>
+</workbook>`;
+
+      const workbookRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+      const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+      const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -5193,55 +5195,33 @@
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-</Types>`
-        },
-        {
-          name: '_rels/.rels',
-          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`
-        },
-        {
-          name: 'xl/workbook.xml',
-          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets>
-    <sheet name="Daily Attendance Log" sheetId="1" r:id="rId1"/>
-    <sheet name="Monthly 1-${daysInMonth} Summary" sheetId="2" r:id="rId2"/>
-  </sheets>
-</workbook>`
-        },
-        {
-          name: 'xl/_rels/workbook.xml.rels',
-          content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`
-        },
+</Types>`;
+
+      const zipEntries = [
+        { name: '[Content_Types].xml', content: contentTypesXml },
+        { name: '_rels/.rels', content: rootRelsXml },
+        { name: 'xl/workbook.xml', content: workbookXml },
+        { name: 'xl/_rels/workbook.xml.rels', content: workbookRelsXml },
         { name: 'xl/styles.xml', content: stylesXml },
         { name: 'xl/worksheets/sheet1.xml', content: s1.sheetXml },
         { name: 'xl/worksheets/sheet2.xml', content: s2.sheetXml }
       ];
-
       if (s1.relsXml) {
-        zipFiles.push({ name: 'xl/worksheets/_rels/sheet1.xml.rels', content: s1.relsXml });
+        zipEntries.push({ name: 'xl/worksheets/_rels/sheet1.xml.rels', content: s1.relsXml });
       }
       if (s2.relsXml) {
-        zipFiles.push({ name: 'xl/worksheets/_rels/sheet2.xml.rels', content: s2.relsXml });
+        zipEntries.push({ name: 'xl/worksheets/_rels/sheet2.xml.rels', content: s2.relsXml });
       }
 
-      const blob = createStoredZipBlob(zipFiles);
-      const url = URL.createObjectURL(blob);
+      const xlsxBlob = createStoredZipBlob(zipEntries);
+      const url = URL.createObjectURL(xlsxBlob);
       const link = document.createElement("a");
       link.href = url;
       link.download = `Attendance_${selectedArea || 'Filtered'}_${formatDateDDMMYYYY(filterStartDate)}_to_${formatDateDDMMYYYY(filterEndDate)}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      showToastNotice(`📊 Exported 2-Sheet Excel (.XLSX): Daily Log + Monthly 1-${daysInMonth} Summary!`);
+      showToastNotice("📊 Downloaded 2-Sheet Excel Workbook (.XLSX): Sheet 1 (Daily Log + Links) & Sheet 2 (Monthly 1–30/31 Matrix)!");
     }
 
     function renderEmployeeMaintenanceTable() {
@@ -5763,20 +5743,79 @@
       document.getElementById('photo-modal').classList.add('hidden');
     }
 
+    // Automatic 12:00 AM IST Midnight Rollover Watcher: locks Coordinator past-date edits and updates Today's date automatically
     let lastObservedISTDate = getTodayISTDateStr();
     setInterval(() => {
       const curIST = getTodayISTDateStr();
       if (curIST !== lastObservedISTDate) {
+        const prevIST = lastObservedISTDate;
         lastObservedISTDate = curIST;
+        if (filterStartDate === prevIST && filterEndDate === prevIST) {
+          filterStartDate = curIST;
+          filterEndDate = curIST;
+          const sEl = document.getElementById('filter-date-start');
+          const eEl = document.getElementById('filter-date-end');
+          if (sEl) sEl.value = curIST;
+          if (eEl) eEl.value = curIST;
+        }
         if (currentUser) {
-          renderDashboard();
+          if (currentUser.role === 'employee' || (currentUser.role === 'coordinator' && currentCoordinatorMode === 'SELF_ATTENDANCE')) {
+            openEmployeePortal();
+          } else {
+            renderDashboard();
+          }
           if (activeProfileEmpCode) {
             updateSelectedDateActionPanel();
+            renderEmployeeProfileHistory();
             renderProfileCalendar();
           }
         }
       }
     }, 30000);
+
+    // =========================================================================
+    // PWA INSTALLATION & SERVICE WORKER REGISTRATION
+    // =========================================================================
+    let deferredPWAInstallPrompt = null;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.warn('Service Worker registration notice:', err);
+        });
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPWAInstallPrompt = e;
+      const installBtn = document.getElementById('btn-pwa-install');
+      if (installBtn) {
+        installBtn.classList.remove('hidden');
+        lucide.createIcons();
+      }
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredPWAInstallPrompt = null;
+      const installBtn = document.getElementById('btn-pwa-install');
+      if (installBtn) installBtn.classList.add('hidden');
+      showToastNotice('✔ AIILSG Attendance App installed successfully!');
+    });
+
+    async function triggerPWAInstall() {
+      if (!deferredPWAInstallPrompt) {
+        showToastNotice('To install: tap your browser menu (⋮) and choose "Install app" or "Add to Home screen".');
+        return;
+      }
+      deferredPWAInstallPrompt.prompt();
+      const { outcome } = await deferredPWAInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        const installBtn = document.getElementById('btn-pwa-install');
+        if (installBtn) installBtn.classList.add('hidden');
+      }
+      deferredPWAInstallPrompt = null;
+    }
   </script>
 </body>
 </html>
